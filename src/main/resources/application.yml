@@ -1,0 +1,121 @@
+# application.yml
+spring:
+  main:
+    web-application-type: servlet
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/nphies_db?connectionTimeZone=UTC&createDatabaseIfNotExist=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:admin@12345}
+  jpa:
+    hibernate:
+      ddl-auto: validate         # Flyway manages schema — never auto
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC         # MySQL DATETIME has no offset — store everything UTC
+        timezone:
+          default_storage: NORMALIZE  # validate OffsetDateTime against DATETIME(6) columns
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:syed@mytracare.com}
+    password: ${SMTP_PASSWORD:YOUR_SMTP_APP_PASSWORD_HERE}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+app:
+  bootstrap:
+    # Seeded only when the users table is empty (first boot). Change the
+    # password after first login; override via env vars in production.
+    admin-email: ${BOOTSTRAP_ADMIN_EMAIL:admin@tracare.local}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:Admin@12345}
+    tenant-id: ${BOOTSTRAP_TENANT_ID:HOSPITAL-001}
+  mail:
+    # When false, no email is sent — invite OTPs are returned in the API
+    # response / logged instead, for out-of-band delivery by the admin.
+    enabled: ${MAIL_ENABLED:true}
+    # Gmail/Workspace rejects or rewrites From addresses that don't match the
+    # authenticated account — keep this aligned with spring.mail.username
+    from: ${MAIL_FROM:syed@mytracare.com}
+  jwt:
+    # Default is dev-only. In production, set JWT_SECRET env var (openssl rand -base64 32)
+    secret: ${JWT_SECRET:YOUR_JWT_SECRET_BASE64_HERE}
+    expiration-ms: 86400000
+
+# ── TraCare Clinical App integration ─────────────────────────────────────
+tracare:
+  base-url: ${TRACARE_BASE_URL:http://localhost:8081}
+  internal-api-key: ${TRACARE_INTERNAL_API_KEY:YOUR_INTERNAL_API_KEY_HERE}
+
+# ── NPHIES Encryption ──────────────────────────────────────────────────────
+nphies:
+  encryption:
+    # Generate with: AesEncryptionService.generateNewMasterKey()
+    # Default is dev-only (like app.jwt.secret). In production, set
+    # NPHIES_MASTER_KEY_BASE64 from GCP Secret Manager / Vault — NEVER commit a real key
+    master-key-base64: ${NPHIES_MASTER_KEY_BASE64:YOUR_AES_MASTER_KEY_BASE64_HERE}
+
+# ── GCP Secret Manager (if using) ─────────────────────────────────────────
+gcp:
+  project-id: ${GCP_PROJECT_ID:my-gcp-project}
+  secret-manager:
+    # Requires ADC credentials — keep false unless external secret refs are used
+    enabled: ${GCP_SECRET_MANAGER_ENABLED:false}
+
+# ── HashiCorp Vault (if using) ────────────────────────────────────────────
+spring.cloud.vault:
+  enabled: ${VAULT_ENABLED:false}
+  host: ${VAULT_HOST:localhost}
+  port: ${VAULT_PORT:8200}
+  scheme: https
+  authentication: TOKEN
+  token: ${VAULT_TOKEN:none}
+  kv:
+    enabled: true
+    backend: secret
+
+# ── Resilience4j — fine-tuning ────────────────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Default template — per-tenant instances inherit this
+      default:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      default:
+        max-attempts: 3
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  ratelimiter:
+    instances:
+      default:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 2s
+
+# ── Actuator (for Resilience4j metrics) ───────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,circuitbreakers,retries,ratelimiters
+  health:
+    circuitbreakers:
+      enabled: true

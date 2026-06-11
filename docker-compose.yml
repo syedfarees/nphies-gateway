@@ -1,0 +1,71 @@
+services:
+
+  # ── MySQL 8 ────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: nphies_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - internal
+
+  # ── Spring Boot API ────────────────────────────────────────────────────────
+  backend:
+    image: ${IMAGE_REGISTRY}/claim-management-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      NPHIES_MASTER_KEY_BASE64: ${NPHIES_MASTER_KEY_BASE64}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@tracare.local}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      BOOTSTRAP_TENANT_ID: ${BOOTSTRAP_TENANT_ID:-HOSPITAL-001}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@tracare.sa}
+      TRACARE_BASE_URL: ${TRACARE_BASE_URL:-http://tracare-backend:8081}
+      TRACARE_INTERNAL_API_KEY: ${TRACARE_INTERNAL_API_KEY}
+      GCP_SECRET_MANAGER_ENABLED: ${GCP_SECRET_MANAGER_ENABLED:-false}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+    networks:
+      - internal
+    # Port NOT exposed externally — nginx is the only ingress
+    expose:
+      - "8080"
+
+  # ── React / nginx frontend ─────────────────────────────────────────────────
+  frontend:
+    image: ${IMAGE_REGISTRY}/claim-management-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    networks:
+      - internal
+
+volumes:
+  mysql_data:
+
+networks:
+  internal:
+    driver: bridge
