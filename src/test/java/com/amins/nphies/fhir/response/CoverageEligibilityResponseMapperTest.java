@@ -2,12 +2,16 @@ package com.amins.nphies.fhir.response;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import com.amins.nphies.fhir.NphiesProfiles;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.Enumerations.RemittanceOutcome;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -254,6 +258,136 @@ class CoverageEligibilityResponseMapperTest {
         assertThat(resp.getBenefits().get(0).getCategory()).isEqualTo("code-value");
     }
 
+    // ── BundleId ──────────────────────────────────────────────────────────────
+
+    @Test
+    void map_bundleId_isExtracted() {
+        Bundle bundle = new Bundle();
+        bundle.setId("response-bundle-xyz");
+        bundle.setType(Bundle.BundleType.MESSAGE);
+        bundle.addEntry().setResource(cerWithOutcome("complete"));
+        EligibilityResponse resp = mapper.map("req", parser.encodeResourceToString(bundle));
+        assertThat(resp.getBundleId()).isEqualTo("response-bundle-xyz");
+    }
+
+    @Test
+    void map_bundleWithoutCer_bundleIdStillExtracted() {
+        Bundle bundle = new Bundle();
+        bundle.setId("pending-bundle-001");
+        bundle.setType(Bundle.BundleType.MESSAGE);
+        EligibilityResponse resp = mapper.map("req", parser.encodeResourceToString(bundle));
+        assertThat(resp.getBundleId()).isEqualTo("pending-bundle-001");
+    }
+
+    @Test
+    void map_nullResponse_bundleIdIsNull() {
+        EligibilityResponse resp = mapper.map("req", null);
+        assertThat(resp.getBundleId()).isNull();
+    }
+
+    // ── ResponseCode (MessageHeader.response.code) ────────────────────────────
+
+    @Test
+    void map_responseCode_okIsExtracted() {
+        Bundle bundle = new Bundle();
+        bundle.setType(Bundle.BundleType.MESSAGE);
+        MessageHeader hdr = new MessageHeader();
+        hdr.getResponse().setCode(MessageHeader.ResponseType.OK);
+        bundle.addEntry().setResource(hdr);
+        bundle.addEntry().setResource(cerWithOutcome("complete"));
+        EligibilityResponse resp = mapper.map("req", parser.encodeResourceToString(bundle));
+        assertThat(resp.getResponseCode()).isEqualTo("ok");
+    }
+
+    @Test
+    void map_responseCode_nullWhenNoMessageHeader() {
+        EligibilityResponse resp = mapper.map("req", bundleJson(cerWithOutcome("complete")));
+        assertThat(resp.getResponseCode()).isNull();
+    }
+
+    // ── SiteEligibility extension ─────────────────────────────────────────────
+
+    @Test
+    void map_siteEligibilityCode_isExtracted() {
+        CoverageEligibilityResponse cer = cerWithOutcome("complete");
+        cer.addExtension()
+                .setUrl(NphiesProfiles.EXT_SITE_ELIGIBILITY)
+                .setValue(new CodeableConcept().addCoding(new Coding().setCode("eligible")));
+        EligibilityResponse resp = mapper.map("req", bundleJson(cer));
+        assertThat(resp.getSiteEligibilityCode()).isEqualTo("eligible");
+    }
+
+    @Test
+    void map_siteEligibilityCode_nullWhenExtensionAbsent() {
+        EligibilityResponse resp = mapper.map("req", bundleJson(cerWithOutcome("complete")));
+        assertThat(resp.getSiteEligibilityCode()).isNull();
+    }
+
+    // ── ServicedPeriod ────────────────────────────────────────────────────────
+
+    @Test
+    void map_servicedPeriod_isExtracted() {
+        CoverageEligibilityResponse cer = cerWithOutcome("complete");
+        cer.setServiced(new Period()
+                .setStart(toDate(LocalDate.of(2025, 1, 1)))
+                .setEnd(toDate(LocalDate.of(2025, 12, 31))));
+        EligibilityResponse resp = mapper.map("req", bundleJson(cer));
+        assertThat(resp.getServicedPeriodStart()).isEqualTo(LocalDate.of(2025, 1, 1));
+        assertThat(resp.getServicedPeriodEnd()).isEqualTo(LocalDate.of(2025, 12, 31));
+    }
+
+    @Test
+    void map_servicedDate_mappedToBothStartAndEnd() {
+        CoverageEligibilityResponse cer = cerWithOutcome("complete");
+        cer.setServiced(new DateType(toDate(LocalDate.of(2025, 6, 15))));
+        EligibilityResponse resp = mapper.map("req", bundleJson(cer));
+        assertThat(resp.getServicedPeriodStart()).isEqualTo(LocalDate.of(2025, 6, 15));
+        assertThat(resp.getServicedPeriodEnd()).isEqualTo(LocalDate.of(2025, 6, 15));
+    }
+
+    @Test
+    void map_servicedPeriod_nullWhenAbsent() {
+        EligibilityResponse resp = mapper.map("req", bundleJson(cerWithOutcome("complete")));
+        assertThat(resp.getServicedPeriodStart()).isNull();
+        assertThat(resp.getServicedPeriodEnd()).isNull();
+    }
+
+    // ── Coverage type and period ──────────────────────────────────────────────
+
+    @Test
+    void map_coverageType_isExtractedFromCoverageResource() {
+        Bundle bundle = new Bundle();
+        bundle.setType(Bundle.BundleType.MESSAGE);
+        bundle.addEntry().setResource(cerWithOutcome("complete"));
+        Coverage fhirCoverage = new Coverage();
+        fhirCoverage.getType().addCoding().setCode("EHCPOL");
+        bundle.addEntry().setResource(fhirCoverage);
+        EligibilityResponse resp = mapper.map("req", parser.encodeResourceToString(bundle));
+        assertThat(resp.getCoverageType()).isEqualTo("EHCPOL");
+    }
+
+    @Test
+    void map_coveragePeriod_isExtractedFromCoverageResource() {
+        Bundle bundle = new Bundle();
+        bundle.setType(Bundle.BundleType.MESSAGE);
+        bundle.addEntry().setResource(cerWithOutcome("complete"));
+        Coverage fhirCoverage = new Coverage();
+        fhirCoverage.getPeriod()
+                .setStart(toDate(LocalDate.of(2025, 1, 1)))
+                .setEnd(toDate(LocalDate.of(2025, 12, 31)));
+        bundle.addEntry().setResource(fhirCoverage);
+        EligibilityResponse resp = mapper.map("req", parser.encodeResourceToString(bundle));
+        assertThat(resp.getCoveragePeriodStart()).isEqualTo(LocalDate.of(2025, 1, 1));
+        assertThat(resp.getCoveragePeriodEnd()).isEqualTo(LocalDate.of(2025, 12, 31));
+    }
+
+    @Test
+    void map_coverageType_nullWhenNoCoverageInBundle() {
+        EligibilityResponse resp = mapper.map("req", bundleJson(cerWithOutcome("complete")));
+        assertThat(resp.getCoverageType()).isNull();
+        assertThat(resp.getCoveragePeriodStart()).isNull();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String bundleJson(CoverageEligibilityResponse cer) {
@@ -317,6 +451,10 @@ class CoverageEligibilityResponseMapperTest {
 
     private Money money(int amount, String currency) {
         return new Money().setValue(BigDecimal.valueOf(amount)).setCurrency(currency);
+    }
+
+    private Date toDate(LocalDate d) {
+        return Date.from(d.atStartOfDay().toInstant(ZoneOffset.UTC));
     }
 
     private record BenefitDef(String type, Type allowed, Type used) {}
