@@ -132,7 +132,7 @@ public class ClaimBundleBuilder {
         // Priority
         String priorityCode = input.getPriority() != null ? input.getPriority() : "normal";
         claim.setPriority(new CodeableConcept().addCoding(new Coding()
-                .setSystem(NphiesProfiles.CS_PRIORITY)
+                .setSystem(NphiesProfiles.CS_PROCESS_PRIORITY)
                 .setCode(priorityCode)));
 
         claim.setPatient(new Reference("urn:uuid:" + patientId));

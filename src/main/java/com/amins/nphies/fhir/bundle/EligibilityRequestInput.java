@@ -9,16 +9,6 @@ import java.util.List;
 
 /**
  * Caller-supplied data for building a NPHIES CoverageEligibilityRequest Bundle.
- *
- * Typical usage:
- * <pre>
- *   EligibilityRequestInput input = EligibilityRequestInput.builder()
- *       .requestId(UUID.randomUUID().toString())
- *       .patientNationalId("1234567890")
- *       ...
- *       .build();
- *   String bundleJson = builder.build(input);
- * </pre>
  */
 @Value
 @Builder
@@ -29,6 +19,14 @@ public class EligibilityRequestInput {
     /** UUID for the Bundle.id and transaction tracking. */
     @NonNull String requestId;
 
+    /**
+     * Provider system base URL used for resource fullUrls and internal references
+     * (e.g. "http://provider.com"). MessageHeader uses urn:uuid; all other resources
+     * use {providerBaseUrl}/{ResourceType}/{id}.
+     */
+    @Builder.Default
+    String providerBaseUrl = "http://provider.com";
+
     // ── Patient ──────────────────────────────────────────────────────────────
 
     /**
@@ -37,20 +35,46 @@ public class EligibilityRequestInput {
      */
     @NonNull String patientNationalId;
 
+    /** Primary given name (used when patientGivenNames is null/empty). */
     @NonNull String patientFirstName;
-    @NonNull String patientFamilyName;
 
+    /** Additional given names (middle names). When set, overrides patientFirstName. */
+    List<String> patientGivenNames;
+
+    @NonNull String patientFamilyName;
     @NonNull LocalDate patientDateOfBirth;
 
-    /**
-     * FHIR administrative gender: {@code male}, {@code female}, {@code other}, {@code unknown}.
-     */
+    /** FHIR administrative gender: {@code male}, {@code female}, {@code other}, {@code unknown}. */
     @NonNull String patientGender;
+
+    /** Patient phone number. Optional — omitted from bundle when null. */
+    String patientPhone;
+
+    /**
+     * HL7 v3 marital status code (M=Married, S=Single, D=Divorced, W=Widowed, …).
+     * Optional — omitted from bundle when null.
+     */
+    String patientMaritalStatus;
+
+    /**
+     * ISO 3166 alpha-3 country code for the patient's nationality (e.g. "SAU", "PSE").
+     * Required for Iqama holders; added as an extension on the identifier.
+     */
+    String patientNationalityCode;
+
+    /** Display name for the nationality country (e.g. "Palestine, State of"). Optional. */
+    String patientNationalityDisplay;
 
     // ── Coverage / insurance ─────────────────────────────────────────────────
 
     /** Member/beneficiary ID issued by the insurer. */
     @NonNull String memberId;
+
+    /**
+     * Identifier system URL for the member ID (payer-specific).
+     * Defaults to {@link com.amins.nphies.fhir.NphiesProfiles#SYSTEM_MEMBER_ID} when null.
+     */
+    String memberIdSystem;
 
     /**
      * Subscriber relationship code per
@@ -59,6 +83,28 @@ public class EligibilityRequestInput {
      */
     @Builder.Default
     String coverageRelationship = "self";
+
+    /**
+     * NPHIES coverage type code (e.g. {@code EHCPOL}, {@code PUBLICPOL}).
+     */
+    @Builder.Default
+    String coverageType = "EHCPOL";
+
+    /** Display text for coverageType (e.g. "extended healthcare"). */
+    @Builder.Default
+    String coverageTypeDisplay = "extended healthcare";
+
+    /** Start date of the coverage period. Optional. */
+    LocalDate coveragePeriodStart;
+
+    /** End date of the coverage period. Optional. */
+    LocalDate coveragePeriodEnd;
+
+    /**
+     * Insurance business arrangement / contract reference number.
+     * Optional — omitted from the insurance component when null.
+     */
+    String businessArrangement;
 
     // ── Payer (insurer) ──────────────────────────────────────────────────────
 
@@ -77,15 +123,18 @@ public class EligibilityRequestInput {
     // ── Request parameters ───────────────────────────────────────────────────
 
     /**
-     * Date for which eligibility is being checked. Defaults to today if null.
+     * Start date of the serviced period. Defaults to today if null.
      */
     LocalDate servicedDate;
 
     /**
+     * End date of the serviced period. Defaults to servicedDate (or today) if null.
+     */
+    LocalDate servicedPeriodEnd;
+
+    /**
      * One or more NPHIES eligibility purposes.
-     * Allowed values: {@code benefits}, {@code discovery}, {@code validation},
-     * {@code auth-requirements}.
-     * Defaults to {@code ["benefits"]} if null/empty.
+     * Allowed: {@code benefits}, {@code discovery}, {@code validation}, {@code auth-requirements}.
      */
     @Builder.Default
     List<String> purposes = List.of("benefits");

@@ -42,18 +42,36 @@ public class EligibilityService {
 
         EligibilityRequestInput fhirInput = EligibilityRequestInput.builder()
                 .requestId(request.getRequestId())
+                .providerBaseUrl(request.getProviderBaseUrl())
+                // Patient
                 .patientNationalId(request.getPatientNationalId())
                 .patientFirstName(request.getPatientFirstName())
+                .patientGivenNames(request.getPatientGivenNames())
                 .patientFamilyName(request.getPatientFamilyName())
                 .patientDateOfBirth(request.getPatientDateOfBirth())
                 .patientGender(request.getPatientGender())
+                .patientPhone(request.getPatientPhone())
+                .patientMaritalStatus(request.getPatientMaritalStatus())
+                .patientNationalityCode(request.getPatientNationalityCode())
+                .patientNationalityDisplay(request.getPatientNationalityDisplay())
+                // Coverage
                 .memberId(request.getMemberId())
+                .memberIdSystem(request.getMemberIdSystem())
                 .coverageRelationship(request.getCoverageRelationship())
+                .coverageType(request.getCoverageType())
+                .coverageTypeDisplay(request.getCoverageTypeDisplay())
+                .coveragePeriodStart(request.getCoveragePeriodStart())
+                .coveragePeriodEnd(request.getCoveragePeriodEnd())
+                .businessArrangement(request.getBusinessArrangement())
+                // Payer
                 .payerLicenseNumber(request.getPayerLicenseNumber())
                 .payerName(request.getPayerName())
-                .providerLicenseNumber(config.getProviderLicenseNo())  // from tenant config
-                .providerName(config.getTenantId())                    // tenantId as provider name
+                // Provider — always from tenant config, never from client
+                .providerLicenseNumber(config.getProviderLicenseNo())
+                .providerName(config.getTenantId())
+                // Request parameters
                 .servicedDate(request.getServicedDate())
+                .servicedPeriodEnd(request.getServicedPeriodEnd())
                 .purposes(request.getPurposes())
                 .build();
 
