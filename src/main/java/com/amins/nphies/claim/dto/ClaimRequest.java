@@ -44,6 +44,9 @@ public class ClaimRequest {
 
     private String claimSubType;
 
+    private String episodeSystem;
+    private String episodeValue;
+
     @Valid
     private List<CareTeamEntry> careTeam;
 
@@ -92,8 +95,9 @@ public class ClaimRequest {
         private String productServiceSystem;
         @Size(max = 255)
         private String productServiceDisplay;
-        @NotNull
         private LocalDate servicedDate;
+        private LocalDate servicedPeriodStart;
+        private LocalDate servicedPeriodEnd;
         private BigDecimal quantity = BigDecimal.ONE;
         @NotNull
         private BigDecimal unitPrice;
@@ -104,7 +108,10 @@ public class ClaimRequest {
         private String[] modifierCodes;
         private BigDecimal taxAmount;
         private BigDecimal patientShareAmount;
+        private BigDecimal payerShareAmount;
         private Boolean isPackage;
+        private String patientInvoiceSystem;
+        private String patientInvoiceValue;
         @Valid
         private List<ItemDetailDto> detail;
     }
@@ -143,5 +150,9 @@ public class ClaimRequest {
         @Size(max = 20)
         private String quantityUnit;
         private LocalDate timingDate;
+        private String attachmentContentType;
+        private String attachmentTitle;
+        private String attachmentData;
+        private LocalDate attachmentCreation;
     }
 }

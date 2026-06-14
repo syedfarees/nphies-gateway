@@ -21,6 +21,10 @@ public class ClaimBundleInput {
     @Builder.Default String priority = "normal";
     @Builder.Default String payeeTypeCode = "provider";
 
+    // Claim-level episode extension (optional)
+    String episodeSystem;
+    String episodeValue;
+
     // Patient
     @NonNull String patientNationalId;
     @NonNull String patientFirstName;
@@ -67,6 +71,7 @@ public class ClaimBundleInput {
         @NonNull String familyName;
         @Builder.Default String roleCode = "primary";
         String qualification;
+        @Builder.Default boolean active = true;
     }
 
     @Value
@@ -88,7 +93,9 @@ public class ClaimBundleInput {
         @NonNull String productCode;
         String productSystem;
         String productDisplay;
-        @NonNull LocalDate servicedDate;
+        LocalDate servicedDate;
+        LocalDate servicedPeriodStart;
+        LocalDate servicedPeriodEnd;
         @Builder.Default BigDecimal qty = BigDecimal.ONE;
         @NonNull BigDecimal unitPrice;
         @NonNull BigDecimal net;
@@ -96,7 +103,10 @@ public class ClaimBundleInput {
         String[] modifiers;
         BigDecimal taxAmount;
         BigDecimal patientShareAmount;
+        BigDecimal payerShareAmount;
         Boolean isPackage;
+        String patientInvoiceSystem;
+        String patientInvoiceValue;
         List<ItemDetail> detail;
     }
 
@@ -124,5 +134,9 @@ public class ClaimBundleInput {
         BigDecimal quantityValue;
         String quantityUnit;
         LocalDate timingDate;
+        String attachmentContentType;
+        String attachmentTitle;
+        String attachmentData;
+        LocalDate attachmentCreation;
     }
 }

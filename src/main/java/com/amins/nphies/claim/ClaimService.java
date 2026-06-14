@@ -285,6 +285,8 @@ public class ClaimService {
                         .productSystem(itemDto.getProductServiceSystem())
                         .productDisplay(itemDto.getProductServiceDisplay())
                         .servicedDate(itemDto.getServicedDate())
+                        .servicedPeriodStart(itemDto.getServicedPeriodStart())
+                        .servicedPeriodEnd(itemDto.getServicedPeriodEnd())
                         .qty(itemDto.getQuantity())
                         .unitPrice(itemDto.getUnitPrice())
                         .net(itemDto.getNetAmount())
@@ -292,7 +294,10 @@ public class ClaimService {
                         .modifiers(itemDto.getModifierCodes())
                         .taxAmount(itemDto.getTaxAmount())
                         .patientShareAmount(itemDto.getPatientShareAmount())
+                        .payerShareAmount(itemDto.getPayerShareAmount())
                         .isPackage(itemDto.getIsPackage())
+                        .patientInvoiceSystem(itemDto.getPatientInvoiceSystem())
+                        .patientInvoiceValue(itemDto.getPatientInvoiceValue())
                         .detail(detailList)
                         .build());
             }
@@ -307,6 +312,10 @@ public class ClaimService {
                         .quantityValue(si.getQuantityValue())
                         .quantityUnit(si.getQuantityUnit())
                         .timingDate(si.getTimingDate())
+                        .attachmentContentType(si.getAttachmentContentType())
+                        .attachmentTitle(si.getAttachmentTitle())
+                        .attachmentData(si.getAttachmentData())
+                        .attachmentCreation(si.getAttachmentCreation())
                         .build());
             }
         }
@@ -316,6 +325,8 @@ public class ClaimService {
                 .useType(claim.getUseType().toFhirCode())
                 .claimType(claim.getClaimType().toFhirCode())
                 .claimSubType(req.getClaimSubType())
+                .episodeSystem(req.getEpisodeSystem())
+                .episodeValue(req.getEpisodeValue())
                 .priority(claim.getPriority())
                 .patientNationalId(beneficiary.getNationalId())
                 .patientFirstName(beneficiary.getFirstName())

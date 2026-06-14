@@ -321,7 +321,7 @@ class ClaimBundleBuilderTest {
         assertThat(role.getIdentifierFirstRep().getValue()).isEqualTo("doctor");
         assertThat(role.getPractitioner().getType()).isEqualTo("Practitioner");
         assertThat(role.getPractitioner().getIdentifier().getSystem())
-                .isEqualTo(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSES);
+                .isEqualTo(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSE);
         assertThat(role.getPractitioner().getIdentifier().getValue()).isEqualTo("PRAC-06-362");
         assertThat(role.getOrganization().getReference()).startsWith(BASE_URL + "/Organization/");
         assertThat(role.getCodeFirstRep().getCodingFirstRep().getCode()).isEqualTo("doctor");
@@ -544,5 +544,240 @@ class ClaimBundleBuilderTest {
                 .isEqualTo("temperature");
         assertThat(claim.getSupportingInfo().get(1).getCategory().getCodingFirstRep().getCode())
                 .isEqualTo("last-menstrual-period");
+    }
+
+    // ── Claim episode extension ───────────────────────────────────────────────
+
+    @Test
+    void build_claim_episodeExtensionIsSet() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .episodeSystem("http://provider.com/episode").episodeValue("episode-1")
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        boolean hasEpisode = claim.getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_EPISODE.equals(e.getUrl())
+                        && e.getValue() instanceof Identifier id
+                        && "episode-1".equals(id.getValue()));
+        assertThat(hasEpisode).isTrue();
+    }
+
+    @Test
+    void build_claim_noEpisodeExtensionWhenNotProvided() {
+        Bundle bundle = parse(minimalInput());
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        boolean hasEpisode = claim.getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_EPISODE.equals(e.getUrl()));
+        assertThat(hasEpisode).isFalse();
+    }
+
+    // ── Item payer-share extension ────────────────────────────────────────────
+
+    @Test
+    void build_item_payerShareExtensionIsSet() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("96037-00-00")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(1000)).net(BigDecimal.valueOf(1000))
+                        .payerShareAmount(BigDecimal.valueOf(1000))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        boolean hasPayerShare = claim.getItemFirstRep().getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_PAYER_SHARE.equals(e.getUrl()));
+        assertThat(hasPayerShare).isTrue();
+    }
+
+    // ── Item patientInvoice extension ─────────────────────────────────────────
+
+    @Test
+    void build_item_patientInvoiceExtensionIsSet() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("96037-00-00")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(100)).net(BigDecimal.valueOf(100))
+                        .patientInvoiceSystem("http://provider.com/invoice").patientInvoiceValue("INV-001")
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        boolean hasInvoice = claim.getItemFirstRep().getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_PATIENT_INVOICE.equals(e.getUrl())
+                        && e.getValue() instanceof Identifier id
+                        && "INV-001".equals(id.getValue()));
+        assertThat(hasInvoice).isTrue();
+    }
+
+    // ── Item servicedPeriod ───────────────────────────────────────────────────
+
+    @Test
+    void build_item_servicedPeriodIsUsedWhenSet() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("MED-001")
+                        .servicedPeriodStart(LocalDate.of(2025, 1, 10))
+                        .servicedPeriodEnd(LocalDate.of(2025, 1, 20))
+                        .unitPrice(BigDecimal.valueOf(65)).net(BigDecimal.valueOf(195))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getItemFirstRep().getServiced()).isInstanceOf(Period.class);
+        Period p = (Period) claim.getItemFirstRep().getServiced();
+        assertThat(p.getStart()).isNotNull();
+        assertThat(p.getEnd()).isNotNull();
+    }
+
+    @Test
+    void build_item_servicedDateIsUsedWhenNoPeriod() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("PROC-001")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(100)).net(BigDecimal.valueOf(100))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getItemFirstRep().getServiced()).isInstanceOf(DateType.class);
+    }
+
+    // ── PractitionerRole active configurable ─────────────────────────────────
+
+    @Test
+    void build_practitionerRole_activeIsFalseWhenConfigured() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .careTeam(List.of(ClaimBundleInput.CareTeamMember.builder()
+                        .sequence(1).practitionerLicense("PRAC-001")
+                        .firstName("Dr").familyName("Smith").roleCode("doctor")
+                        .active(false).build()))
+                .build();
+        Bundle bundle = parse(input);
+        PractitionerRole role = (PractitionerRole) bundle.getEntry().get(6).getResource();
+        assertThat(role.getActive()).isFalse();
+    }
+
+    // ── PractitionerRole practitioner identifier system ───────────────────────
+
+    @Test
+    void build_practitionerRole_practitionerIdentifierUsesLicenseSystem() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .careTeam(List.of(ClaimBundleInput.CareTeamMember.builder()
+                        .sequence(1).practitionerLicense("2600097662")
+                        .firstName("Dr").familyName("Smith").roleCode("doctor").build()))
+                .build();
+        Bundle bundle = parse(input);
+        PractitionerRole role = (PractitionerRole) bundle.getEntry().get(6).getResource();
+        assertThat(role.getPractitioner().getIdentifier().getSystem())
+                .isEqualTo(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSE);
+    }
+
+    // ── Supporting info attachment ────────────────────────────────────────────
+
+    @Test
+    void build_supportingInfo_attachmentIsAddedWhenProvided() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .supportingInfo(List.of(ClaimBundleInput.SupportingInfoEntry.builder()
+                        .sequence(1).categoryCode("attachment")
+                        .attachmentContentType("application/pdf")
+                        .attachmentTitle("Discharge Summary")
+                        .attachmentData("AAAA")
+                        .attachmentCreation(LocalDate.of(2025, 1, 1))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        Claim.SupportingInformationComponent si = claim.getSupportingInfoFirstRep();
+        assertThat(si.getValue()).isInstanceOf(Attachment.class);
+        Attachment att = (Attachment) si.getValue();
+        assertThat(att.getContentType()).isEqualTo("application/pdf");
+        assertThat(att.getTitle()).isEqualTo("Discharge Summary");
+    }
+
+    // ── Claim total ───────────────────────────────────────────────────────────
+
+    @Test
+    void build_claim_totalIsSetWhenProvided() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .totalAmount(BigDecimal.valueOf(3945))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getTotal()).isNotNull();
+        assertThat(claim.getTotal().getValue()).isEqualByComparingTo(BigDecimal.valueOf(3945));
+        assertThat(claim.getTotal().getCurrency()).isEqualTo("SAR");
+    }
+
+    @Test
+    void build_claim_totalIsAbsentWhenNotProvided() {
+        Bundle bundle = parse(minimalInput());
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.hasTotal()).isFalse();
     }
 }

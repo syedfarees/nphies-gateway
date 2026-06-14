@@ -149,6 +149,14 @@ public class ClaimBundleBuilder {
                 : claimUrl.substring(0, claimUrl.lastIndexOf('/'));
         claim.addIdentifier().setSystem(identSystem).setValue(id);
 
+        if (input.getEpisodeValue() != null) {
+            claim.addExtension()
+                    .setUrl(NphiesProfiles.EXT_EPISODE)
+                    .setValue(new Identifier()
+                            .setSystem(input.getEpisodeSystem())
+                            .setValue(input.getEpisodeValue()));
+        }
+
         claim.setStatus(Claim.ClaimStatus.ACTIVE);
         claim.setUse(Claim.Use.fromCode(input.getUseType()));
 
@@ -238,6 +246,13 @@ public class ClaimBundleBuilder {
                             .setValue(si.getQuantityValue())
                             .setSystem(NphiesProfiles.CS_UCUM)
                             .setCode(si.getQuantityUnit()));
+                } else if (si.getAttachmentData() != null) {
+                    Attachment attachment = new Attachment();
+                    if (si.getAttachmentContentType() != null) attachment.setContentType(si.getAttachmentContentType());
+                    if (si.getAttachmentTitle() != null) attachment.setTitle(si.getAttachmentTitle());
+                    attachment.setDataElement(new Base64BinaryType(si.getAttachmentData()));
+                    if (si.getAttachmentCreation() != null) attachment.setCreation(toDate(si.getAttachmentCreation()));
+                    sic.setValue(attachment);
                 } else if (si.getTimingDate() != null) {
                     sic.setTiming(new DateType(toDate(si.getTimingDate())));
                 }
@@ -259,9 +274,19 @@ public class ClaimBundleBuilder {
                     item.addExtension().setUrl(NphiesProfiles.EXT_PATIENT_SHARE)
                             .setValue(new Money().setValue(itemEntry.getPatientShareAmount()).setCurrency(cur));
                 }
+                if (itemEntry.getPayerShareAmount() != null) {
+                    item.addExtension().setUrl(NphiesProfiles.EXT_PAYER_SHARE)
+                            .setValue(new Money().setValue(itemEntry.getPayerShareAmount()).setCurrency(cur));
+                }
                 if (Boolean.TRUE.equals(itemEntry.getIsPackage())) {
                     item.addExtension().setUrl(NphiesProfiles.EXT_PACKAGE)
                             .setValue(new BooleanType(true));
+                }
+                if (itemEntry.getPatientInvoiceValue() != null) {
+                    item.addExtension().setUrl(NphiesProfiles.EXT_PATIENT_INVOICE)
+                            .setValue(new Identifier()
+                                    .setSystem(itemEntry.getPatientInvoiceSystem())
+                                    .setValue(itemEntry.getPatientInvoiceValue()));
                 }
 
                 if (itemEntry.getCareTeamSeqs() != null) {
@@ -277,7 +302,16 @@ public class ClaimBundleBuilder {
                 if (itemEntry.getProductDisplay() != null) productCoding.setDisplay(itemEntry.getProductDisplay());
                 item.setProductOrService(new CodeableConcept().addCoding(productCoding));
 
-                item.setServiced(new DateType(toDate(itemEntry.getServicedDate())));
+                if (itemEntry.getServicedPeriodStart() != null) {
+                    Period servicedPeriod = new Period();
+                    servicedPeriod.setStart(toDate(itemEntry.getServicedPeriodStart()));
+                    if (itemEntry.getServicedPeriodEnd() != null) {
+                        servicedPeriod.setEnd(toDate(itemEntry.getServicedPeriodEnd()));
+                    }
+                    item.setServiced(servicedPeriod);
+                } else if (itemEntry.getServicedDate() != null) {
+                    item.setServiced(new DateType(toDate(itemEntry.getServicedDate())));
+                }
 
                 BigDecimal qty = itemEntry.getQty() != null ? itemEntry.getQty() : BigDecimal.ONE;
                 item.setQuantity(new Quantity().setValue(qty));
@@ -318,6 +352,10 @@ public class ClaimBundleBuilder {
 
                 claim.addItem(item);
             }
+        }
+
+        if (input.getTotalAmount() != null) {
+            claim.setTotal(new Money().setValue(input.getTotalAmount()).setCurrency(cur));
         }
 
         return claim;
@@ -441,7 +479,7 @@ public class ClaimBundleBuilder {
         PractitionerRole role = new PractitionerRole();
         role.setId(id);
         role.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.PRACTITIONER_ROLE));
-        role.setActive(true);
+        role.setActive(member.isActive());
 
         String roleCode = member.getRoleCode() != null ? member.getRoleCode() : "primary";
 
@@ -452,7 +490,7 @@ public class ClaimBundleBuilder {
         Reference practRef = new Reference();
         practRef.setType("Practitioner");
         practRef.setIdentifier(new Identifier()
-                .setSystem(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSES)
+                .setSystem(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSE)
                 .setValue(member.getPractitionerLicense()));
         role.setPractitioner(practRef);
 
