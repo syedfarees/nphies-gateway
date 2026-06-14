@@ -28,8 +28,10 @@ public final class NphiesProfiles {
     public static final String PROVIDER_ORGANIZATION = SD + "provider-organization";
     public static final String INSURER_ORGANIZATION  = SD + "insurer-organization";
     public static final String CLAIM                 = SD + "claim";
+    public static final String INSTITUTIONAL_CLAIM   = SD + "institutional-claim";
     public static final String CLAIM_RESPONSE        = SD + "claim-response";
     public static final String PRACTITIONER          = SD + "practitioner";
+    public static final String PRACTITIONER_ROLE     = SD + "practitioner-role";
     public static final String ENCOUNTER             = SD + "encounter";
 
     // ── StructureDefinition extensions ───────────────────────────────────────
@@ -37,6 +39,10 @@ public final class NphiesProfiles {
             SD + "extension-ksa-administrative-gender";
     public static final String EXT_IDENTIFIER_COUNTRY =
             SD + "extension-identifier-country";
+    public static final String EXT_TAX              = SD + "extension-tax";
+    public static final String EXT_PATIENT_SHARE    = SD + "extension-patient-share";
+    public static final String EXT_PAYER_SHARE      = SD + "extension-payer-share";
+    public static final String EXT_PACKAGE          = SD + "extension-package";
 
     // ── Identifier systems — license numbers ─────────────────────────────────
     /** CCHI-issued provider license number */
@@ -57,9 +63,12 @@ public final class NphiesProfiles {
     public static final String SYSTEM_MEMBER_ID = "http://payer.com/memberid";
 
     // ── Identifier systems — clinical ────────────────────────────────────────
-    /** CCHI-issued practitioner license number */
+    /** CCHI-issued practitioner license number (used as Practitioner.identifier) */
     public static final String SYSTEM_PRACTITIONER_LICENSE =
             "http://nphies.sa/license/practitioner-license";
+    /** Practitioner identifier system used inside PractitionerRole.practitioner.identifier */
+    public static final String SYSTEM_PRACTITIONER_LICENSES =
+            "http://nphies.sa/licenses/practitioner";
     public static final String SYSTEM_ENCOUNTER = "http://nphies.sa/identifier/encounter";
     public static final String SYSTEM_CLAIM     = "http://nphies.sa/identifier/claim";
 
@@ -75,8 +84,16 @@ public final class NphiesProfiles {
     /** KSA administrative gender extension codes */
     public static final String CS_KSA_ADMIN_GENDER = CS + "ksa-administrative-gender";
     public static final String CS_DIAGNOSIS_TYPE   = CS + "diagnosis-type";
+    public static final String CS_DIAGNOSIS_ON_ADMISSION = CS + "diagnosis-on-admission";
     public static final String CS_SERVICE_TYPE     = CS + "service-type";
     public static final String CS_PROCEDURE        = CS + "procedure";
+    public static final String CS_CLAIM_SUBTYPE    = CS + "claim-subtype";
+    /** PractitionerRole code system for role codes (doctor, nurse, …) */
+    public static final String CS_PRACTITIONER_ROLE = CS + "practitioner-role";
+    /** Practice specialty codes (e.g. 08.22 = Hematology) */
+    public static final String CS_PRACTICE_CODES   = CS + "practice-codes";
+    /** Claim supporting information category codes */
+    public static final String CS_CLAIM_INFO_CATEGORY = CS + "claim-information-category";
 
     // ── Terminology code systems — standard HL7 ──────────────────────────────
     public static final String CS_ELIGIBILITY_PURPOSE =
@@ -101,6 +118,10 @@ public final class NphiesProfiles {
     public static final String CS_V3_MARITAL_STATUS =
             "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus";
     public static final String CS_ICD10 = "http://hl7.org/fhir/sid/icd-10-am";
+    /** Payee type codes (provider, subscriber, other) */
+    public static final String CS_PAYEE_TYPE = "http://terminology.hl7.org/CodeSystem/payeetype";
+    /** UCUM unit system for quantities */
+    public static final String CS_UCUM       = "http://unitsofmeasure.org";
 
     private NphiesProfiles() {}
 }

@@ -250,6 +250,7 @@ public class ClaimService {
                         .icd10Code(entry.getIcd10Code())
                         .icd10Display(entry.getIcd10Display())
                         .diagnosisType(entry.getDiagnosisType())
+                        .onAdmissionCode(entry.getOnAdmission())
                         .build());
             }
         }
@@ -257,18 +258,55 @@ public class ClaimService {
         List<ClaimBundleInput.ClaimItemEntry> itemEntries = new ArrayList<>();
         if (req.getItems() != null) {
             for (ClaimRequest.ClaimItemDto itemDto : req.getItems()) {
+                List<ClaimBundleInput.ItemDetail> detailList = null;
+                if (itemDto.getDetail() != null) {
+                    detailList = new ArrayList<>();
+                    for (ClaimRequest.ItemDetailDto d : itemDto.getDetail()) {
+                        detailList.add(ClaimBundleInput.ItemDetail.builder()
+                                .sequence(d.getSequence())
+                                .productCode(d.getProductCode())
+                                .productSystem(d.getProductSystem())
+                                .productDisplay(d.getProductDisplay())
+                                .quantity(d.getQuantity() != null ? d.getQuantity() : java.math.BigDecimal.ONE)
+                                .unitPrice(d.getUnitPrice())
+                                .factor(d.getFactor())
+                                .net(d.getNet())
+                                .taxAmount(d.getTaxAmount())
+                                .patientShareAmount(d.getPatientShareAmount())
+                                .payerShareAmount(d.getPayerShareAmount())
+                                .build());
+                    }
+                }
                 itemEntries.add(ClaimBundleInput.ClaimItemEntry.builder()
                         .sequence(itemDto.getSequence())
                         .careTeamSeqs(itemDto.getCareTeamSequences())
                         .diagnosisSeqs(itemDto.getDiagnosisSequences())
                         .productCode(itemDto.getProductServiceCode())
                         .productSystem(itemDto.getProductServiceSystem())
+                        .productDisplay(itemDto.getProductServiceDisplay())
                         .servicedDate(itemDto.getServicedDate())
                         .qty(itemDto.getQuantity())
                         .unitPrice(itemDto.getUnitPrice())
                         .net(itemDto.getNetAmount())
                         .bodySite(itemDto.getBodySiteCode())
                         .modifiers(itemDto.getModifierCodes())
+                        .taxAmount(itemDto.getTaxAmount())
+                        .patientShareAmount(itemDto.getPatientShareAmount())
+                        .isPackage(itemDto.getIsPackage())
+                        .detail(detailList)
+                        .build());
+            }
+        }
+
+        List<ClaimBundleInput.SupportingInfoEntry> siEntries = new ArrayList<>();
+        if (req.getSupportingInfo() != null) {
+            for (ClaimRequest.SupportingInfoDto si : req.getSupportingInfo()) {
+                siEntries.add(ClaimBundleInput.SupportingInfoEntry.builder()
+                        .sequence(si.getSequence())
+                        .categoryCode(si.getCategoryCode())
+                        .quantityValue(si.getQuantityValue())
+                        .quantityUnit(si.getQuantityUnit())
+                        .timingDate(si.getTimingDate())
                         .build());
             }
         }
@@ -277,14 +315,18 @@ public class ClaimService {
                 .requestId(claimId)
                 .useType(claim.getUseType().toFhirCode())
                 .claimType(claim.getClaimType().toFhirCode())
+                .claimSubType(req.getClaimSubType())
                 .priority(claim.getPriority())
                 .patientNationalId(beneficiary.getNationalId())
                 .patientFirstName(beneficiary.getFirstName())
                 .patientFamilyName(beneficiary.getFamilyName())
                 .patientDob(beneficiary.getDateOfBirth())
                 .patientGender(beneficiary.getGender())
+                .patientPhone(beneficiary.getPhone())
                 .memberId(coverage.getMemberId())
                 .coverageRelationship(coverage.getCoverageRelationship())
+                .coveragePeriodStart(coverage.getPeriodStart())
+                .coveragePeriodEnd(coverage.getPeriodEnd())
                 .payerLicenseNo(coverage.getPayerLicenseNo())
                 .payerName(coverage.getPayerName())
                 .providerLicenseNo(config.getProviderLicenseNo())
@@ -292,9 +334,11 @@ public class ClaimService {
                 .billablePeriodStart(claim.getBillablePeriodStart())
                 .billablePeriodEnd(claim.getBillablePeriodEnd())
                 .currency(claim.getCurrency())
+                .totalAmount(claim.getTotalNet())
                 .careTeam(careTeamMembers)
                 .diagnoses(diagnosisEntries)
                 .items(itemEntries)
+                .supportingInfo(siEntries.isEmpty() ? null : siEntries)
                 .build();
     }
 

@@ -42,6 +42,8 @@ public class ClaimRequest {
     private BigDecimal totalGross;
     private String currency = "SAR";
 
+    private String claimSubType;
+
     @Valid
     private List<CareTeamEntry> careTeam;
 
@@ -50,6 +52,9 @@ public class ClaimRequest {
 
     @Valid
     private List<ClaimItemDto> items;
+
+    @Valid
+    private List<SupportingInfoDto> supportingInfo;
 
     @Getter
     @Setter
@@ -85,6 +90,8 @@ public class ClaimRequest {
         private String productServiceCode;
         @Size(max = 255)
         private String productServiceSystem;
+        @Size(max = 255)
+        private String productServiceDisplay;
         @NotNull
         private LocalDate servicedDate;
         private BigDecimal quantity = BigDecimal.ONE;
@@ -95,5 +102,46 @@ public class ClaimRequest {
         @Size(max = 50)
         private String bodySiteCode;
         private String[] modifierCodes;
+        private BigDecimal taxAmount;
+        private BigDecimal patientShareAmount;
+        private Boolean isPackage;
+        @Valid
+        private List<ItemDetailDto> detail;
+    }
+
+    @Getter
+    @Setter
+    public static class ItemDetailDto {
+        private int sequence;
+        @NotNull
+        @Size(max = 50)
+        private String productCode;
+        @NotNull
+        @Size(max = 255)
+        private String productSystem;
+        @Size(max = 255)
+        private String productDisplay;
+        private BigDecimal quantity = BigDecimal.ONE;
+        @NotNull
+        private BigDecimal unitPrice;
+        private BigDecimal factor = BigDecimal.ONE;
+        @NotNull
+        private BigDecimal net;
+        private BigDecimal taxAmount;
+        private BigDecimal patientShareAmount;
+        private BigDecimal payerShareAmount;
+    }
+
+    @Getter
+    @Setter
+    public static class SupportingInfoDto {
+        private int sequence;
+        @NotNull
+        @Size(max = 100)
+        private String categoryCode;
+        private BigDecimal quantityValue;
+        @Size(max = 20)
+        private String quantityUnit;
+        private LocalDate timingDate;
     }
 }
