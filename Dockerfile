@@ -5,7 +5,6 @@ WORKDIR /build
 
 # Cache dependency layer — only re-downloaded when pom.xml changes
 COPY pom.xml .
-COPY .mvn .mvn
 RUN mvn dependency:go-offline -q
 
 COPY src src

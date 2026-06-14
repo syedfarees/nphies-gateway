@@ -10,6 +10,7 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:admin@12345}
   jpa:
+    open-in-view: false          # REST API — no view rendering; avoids lazy-load across requests
     hibernate:
       ddl-auto: validate         # Flyway manages schema — never auto
     show-sql: false

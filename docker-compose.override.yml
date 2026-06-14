@@ -1,0 +1,16 @@
+# Local development override — automatically merged by `docker compose up`.
+# Builds both images from source instead of pulling from a registry.
+services:
+  backend:
+    image: claim-management-backend:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"   # expose backend directly for debugging / API tools
+
+  frontend:
+    image: claim-management-frontend:local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
