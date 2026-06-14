@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.*;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
@@ -16,17 +17,16 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Builds a NPHIES FHIR message Bundle containing a Claim resource.
+ * Builds a NPHIES FHIR message Bundle containing a Claim (or PriorAuth) resource.
  *
- * Bundle entry order (per NPHIES IG):
- * 1. MessageHeader
- * 2. Claim
- * 3. Patient
- * 4. Coverage
- * 5. Organization (provider)
- * 6. Organization (insurer)
- * 7. Practitioner (per care team member)
- * 8. Encounter
+ * Bundle entry order (per NPHIES IG sample format):
+ * 1. MessageHeader          — urn:uuid fullUrl
+ * 2. Claim                  — {providerBaseUrl}/Claim/{id}
+ * 3. Organization (provider)
+ * 4. Patient
+ * 5. Organization (insurer)
+ * 6. Coverage
+ * 7. PractitionerRole(s)    — one per care team member
  */
 @Component
 @RequiredArgsConstructor
@@ -36,47 +36,53 @@ public class ClaimBundleBuilder {
     private final IParser fhirJsonParser;
 
     public String build(ClaimBundleInput input) {
+        String baseUrl = input.getProviderBaseUrl();
+
         String msgHeaderId = UUID.randomUUID().toString();
         String claimResId  = UUID.randomUUID().toString();
         String patientId   = UUID.randomUUID().toString();
         String coverageId  = UUID.randomUUID().toString();
         String providerId  = UUID.randomUUID().toString();
         String insurerId   = UUID.randomUUID().toString();
-        String encounterId = UUID.randomUUID().toString();
 
-        // Build care team practitioners
-        List<String> practitionerIds = new ArrayList<>();
-        List<Practitioner> practitioners = new ArrayList<>();
+        String claimUrl       = url(baseUrl, "Claim",        claimResId);
+        String patientUrl     = url(baseUrl, "Patient",      patientId);
+        String coverageUrl    = url(baseUrl, "Coverage",     coverageId);
+        String providerOrgUrl = url(baseUrl, "Organization", providerId);
+        String insurerOrgUrl  = url(baseUrl, "Organization", insurerId);
+
+        List<String> practRoleIds  = new ArrayList<>();
+        List<String> practRoleUrls = new ArrayList<>();
+        List<PractitionerRole> practRoles = new ArrayList<>();
         if (input.getCareTeam() != null) {
             for (ClaimBundleInput.CareTeamMember member : input.getCareTeam()) {
-                String practId = UUID.randomUUID().toString();
-                practitionerIds.add(practId);
-                practitioners.add(buildPractitioner(practId, member));
+                String prId  = UUID.randomUUID().toString();
+                String prUrl = url(baseUrl, "PractitionerRole", prId);
+                practRoleIds.add(prId);
+                practRoleUrls.add(prUrl);
+                practRoles.add(buildPractitionerRole(prId, providerOrgUrl, member));
             }
         }
 
-        Organization provider = buildProviderOrg(providerId, input);
-        Organization insurer  = buildInsurerOrg(insurerId, input);
-        Patient patient       = buildPatient(patientId, input);
-        Coverage coverage     = buildCoverage(coverageId, patientId, insurerId, input);
-        Encounter encounter   = buildEncounter(encounterId, patientId, providerId, input);
-        Claim claim           = buildClaim(claimResId, patientId, coverageId, providerId,
-                insurerId, encounterId, practitionerIds, input);
-
-        MessageHeader msgHeader = buildMessageHeader(msgHeaderId, claimResId,
+        Organization  provider = buildProviderOrg(providerId, input);
+        Organization  insurer  = buildInsurerOrg(insurerId, input);
+        Patient       patient  = buildPatient(patientId, providerOrgUrl, input);
+        Coverage      coverage = buildCoverage(coverageId, patientUrl, insurerOrgUrl, input);
+        Claim         claim    = buildClaim(claimResId, claimUrl, patientUrl, coverageUrl,
+                providerOrgUrl, insurerOrgUrl, practRoleUrls, input);
+        MessageHeader msgHeader = buildMessageHeader(msgHeaderId, claimUrl, baseUrl,
                 input.getProviderLicenseNo(), input.getPayerLicenseNo(), input.getUseType());
 
         List<Bundle.BundleEntryComponent> entries = new ArrayList<>();
-        entries.add(entry(msgHeaderId, msgHeader));
-        entries.add(entry(claimResId,  claim));
-        entries.add(entry(patientId,   patient));
-        entries.add(entry(coverageId,  coverage));
-        entries.add(entry(providerId,  provider));
-        entries.add(entry(insurerId,   insurer));
-        for (int i = 0; i < practitioners.size(); i++) {
-            entries.add(entry(practitionerIds.get(i), practitioners.get(i)));
+        entries.add(entry("urn:uuid:" + msgHeaderId, msgHeader));
+        entries.add(entry(claimUrl,       claim));
+        entries.add(entry(providerOrgUrl, provider));
+        entries.add(entry(patientUrl,     patient));
+        entries.add(entry(insurerOrgUrl,  insurer));
+        entries.add(entry(coverageUrl,    coverage));
+        for (int i = 0; i < practRoles.size(); i++) {
+            entries.add(entry(practRoleUrls.get(i), practRoles.get(i)));
         }
-        entries.add(entry(encounterId, encounter));
 
         Bundle bundle = assembleBundle(input.getRequestId(), entries);
 
@@ -87,92 +93,119 @@ public class ClaimBundleBuilder {
     private Bundle assembleBundle(String requestId, List<Bundle.BundleEntryComponent> entries) {
         Bundle bundle = new Bundle();
         bundle.setId(requestId);
-        bundle.getMeta().addProfile(NphiesProfiles.BUNDLE);
+        bundle.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.BUNDLE));
         bundle.setType(Bundle.BundleType.MESSAGE);
         bundle.setTimestamp(new Date());
         entries.forEach(bundle::addEntry);
         return bundle;
     }
 
-    private MessageHeader buildMessageHeader(String id, String claimResId,
+    private MessageHeader buildMessageHeader(String id, String claimUrl, String providerBaseUrl,
                                               String providerLicense, String payerLicense,
                                               String useType) {
         MessageHeader hdr = new MessageHeader();
         hdr.setId(id);
-        hdr.getMeta().addProfile(NphiesProfiles.MESSAGE_HEADER);
+        hdr.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.MESSAGE_HEADER));
 
-        String eventCode = "preauthorization".equals(useType) ? "priorauth-request" : "claim-request";
+        String eventCode = "preauthorization".equals(useType)
+                ? NphiesEndpoints.EVENT_PRIORAUTH_REQUEST
+                : NphiesEndpoints.EVENT_CLAIM_REQUEST;
         hdr.setEvent(new Coding()
                 .setSystem(NphiesProfiles.CS_MESSAGE_EVENTS)
                 .setCode(eventCode));
 
-        hdr.getSource().setEndpoint("http://" + providerLicense + ".nphies.sa");
-        hdr.addDestination().setEndpoint("http://" + payerLicense + ".nphies.sa");
-        hdr.addFocus(new Reference("urn:uuid:" + claimResId));
+        Reference sender = new Reference();
+        sender.setType("Organization");
+        sender.setIdentifier(new Identifier()
+                .setSystem(NphiesProfiles.SYSTEM_PROVIDER_LICENSE)
+                .setValue(providerLicense));
+        hdr.setSender(sender);
+
+        hdr.getSource().setEndpoint(providerBaseUrl);
+
+        Reference receiver = new Reference();
+        receiver.setType("Organization");
+        receiver.setIdentifier(new Identifier()
+                .setSystem(NphiesProfiles.SYSTEM_PAYER_LICENSE)
+                .setValue(payerLicense));
+        hdr.addDestination()
+                .setEndpoint(NphiesEndpoints.NPHIES_DESTINATION_ENDPOINT)
+                .setReceiver(receiver);
+
+        hdr.addFocus(new Reference(claimUrl));
+
         return hdr;
     }
 
-    private Claim buildClaim(String id, String patientId, String coverageId,
-                              String providerId, String insurerId, String encounterId,
-                              List<String> practitionerIds, ClaimBundleInput input) {
+    private Claim buildClaim(String id, String claimUrl, String patientUrl, String coverageUrl,
+                              String providerOrgUrl, String insurerOrgUrl,
+                              List<String> practRoleUrls, ClaimBundleInput input) {
         Claim claim = new Claim();
         claim.setId(id);
-        claim.getMeta().addProfile(NphiesProfiles.CLAIM);
+        claim.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.INSTITUTIONAL_CLAIM));
+
+        String identSystem = input.getClaimIdentifierSystem() != null
+                ? input.getClaimIdentifierSystem()
+                : claimUrl.substring(0, claimUrl.lastIndexOf('/'));
+        claim.addIdentifier().setSystem(identSystem).setValue(id);
 
         claim.setStatus(Claim.ClaimStatus.ACTIVE);
-
-        // Use
         claim.setUse(Claim.Use.fromCode(input.getUseType()));
 
-        // Type
         claim.setType(new CodeableConcept().addCoding(new Coding()
                 .setSystem(NphiesProfiles.CS_CLAIM_TYPE)
                 .setCode(input.getClaimType())));
 
-        // Priority
-        String priorityCode = input.getPriority() != null ? input.getPriority() : "normal";
+        if (input.getClaimSubType() != null) {
+            claim.setSubType(new CodeableConcept().addCoding(new Coding()
+                    .setSystem(NphiesProfiles.CS_CLAIM_SUBTYPE)
+                    .setCode(input.getClaimSubType())));
+        }
+
+        claim.setPatient(new Reference(patientUrl));
+        claim.setCreated(new Date());
+        claim.setInsurer(new Reference(insurerOrgUrl));
+        claim.setProvider(new Reference(providerOrgUrl));
+
         claim.setPriority(new CodeableConcept().addCoding(new Coding()
                 .setSystem(NphiesProfiles.CS_PROCESS_PRIORITY)
-                .setCode(priorityCode)));
+                .setCode(input.getPriority())));
 
-        claim.setPatient(new Reference("urn:uuid:" + patientId));
-        claim.setInsurer(new Reference("urn:uuid:" + insurerId));
-        claim.setProvider(new Reference("urn:uuid:" + providerId));
+        if (input.getPayeeTypeCode() != null) {
+            claim.setPayee(new Claim.PayeeComponent()
+                    .setType(new CodeableConcept().addCoding(new Coding()
+                            .setSystem(NphiesProfiles.CS_PAYEE_TYPE)
+                            .setCode(input.getPayeeTypeCode()))));
+        }
 
-        // Billable period
-        Period billablePeriod = new Period();
-        billablePeriod.setStart(Date.from(input.getBillablePeriodStart().atStartOfDay().toInstant(ZoneOffset.UTC)));
-        billablePeriod.setEnd(Date.from(input.getBillablePeriodEnd().atStartOfDay().toInstant(ZoneOffset.UTC)));
-        claim.setBillablePeriod(billablePeriod);
-
-        claim.setCreated(new Date());
-
-        // Insurance
-        Claim.InsuranceComponent insurance = new Claim.InsuranceComponent();
-        insurance.setSequence(1);
-        insurance.setFocal(true);
-        insurance.setCoverage(new Reference("urn:uuid:" + coverageId));
-        claim.addInsurance(insurance);
-
-        // Care team
         if (input.getCareTeam() != null) {
             for (int i = 0; i < input.getCareTeam().size(); i++) {
                 ClaimBundleInput.CareTeamMember member = input.getCareTeam().get(i);
+                String roleCode = member.getRoleCode() != null ? member.getRoleCode() : "primary";
                 Claim.CareTeamComponent ct = new Claim.CareTeamComponent();
                 ct.setSequence(member.getSequence());
-                ct.setProvider(new Reference("urn:uuid:" + practitionerIds.get(i)));
+                ct.setProvider(new Reference(practRoleUrls.get(i)));
                 ct.setRole(new CodeableConcept().addCoding(new Coding()
                         .setSystem(NphiesProfiles.CS_CARE_TEAM_ROLE)
-                        .setCode(member.getRoleCode() != null ? member.getRoleCode() : "primary")));
+                        .setCode(roleCode)));
+                if (member.getQualification() != null) {
+                    ct.setQualification(new CodeableConcept().addCoding(new Coding()
+                            .setSystem(NphiesProfiles.CS_PRACTICE_CODES)
+                            .setCode(member.getQualification())));
+                }
                 claim.addCareTeam(ct);
             }
         }
 
-        // Diagnoses
         if (input.getDiagnoses() != null) {
             for (ClaimBundleInput.DiagnosisEntry diag : input.getDiagnoses()) {
                 Claim.DiagnosisComponent dc = new Claim.DiagnosisComponent();
                 dc.setSequence(diag.getSequence());
+                if (diag.getOnAdmissionCode() != null) {
+                    dc.setOnAdmission(new CodeableConcept().addCoding(new Coding()
+                            .setSystem(NphiesProfiles.CS_DIAGNOSIS_ON_ADMISSION)
+                            .setCode(diag.getOnAdmissionCode())));
+                }
                 dc.setDiagnosis(new CodeableConcept().addCoding(new Coding()
                         .setSystem(NphiesProfiles.CS_ICD10)
                         .setCode(diag.getIcd10Code())
@@ -186,47 +219,102 @@ public class ClaimBundleBuilder {
             }
         }
 
-        // Items
+        Claim.InsuranceComponent insurance = new Claim.InsuranceComponent();
+        insurance.setSequence(1);
+        insurance.setFocal(true);
+        insurance.setIdentifier(new Identifier().setSystem(identSystem).setValue(id));
+        insurance.setCoverage(new Reference(coverageUrl));
+        claim.addInsurance(insurance);
+
+        if (input.getSupportingInfo() != null) {
+            for (ClaimBundleInput.SupportingInfoEntry si : input.getSupportingInfo()) {
+                Claim.SupportingInformationComponent sic = new Claim.SupportingInformationComponent();
+                sic.setSequence(si.getSequence());
+                sic.getCategory().addCoding()
+                        .setSystem(NphiesProfiles.CS_CLAIM_INFO_CATEGORY)
+                        .setCode(si.getCategoryCode());
+                if (si.getQuantityValue() != null) {
+                    sic.setValue(new Quantity()
+                            .setValue(si.getQuantityValue())
+                            .setSystem(NphiesProfiles.CS_UCUM)
+                            .setCode(si.getQuantityUnit()));
+                } else if (si.getTimingDate() != null) {
+                    sic.setTiming(new DateType(toDate(si.getTimingDate())));
+                }
+                claim.addSupportingInfo(sic);
+            }
+        }
+
+        String cur = input.getCurrency();
         if (input.getItems() != null) {
             for (ClaimBundleInput.ClaimItemEntry itemEntry : input.getItems()) {
                 Claim.ItemComponent item = new Claim.ItemComponent();
                 item.setSequence(itemEntry.getSequence());
 
-                // Care team sequence references
-                if (itemEntry.getCareTeamSeqs() != null) {
-                    for (int seq : itemEntry.getCareTeamSeqs()) {
-                        item.addCareTeamSequence(seq);
-                    }
+                if (itemEntry.getTaxAmount() != null) {
+                    item.addExtension().setUrl(NphiesProfiles.EXT_TAX)
+                            .setValue(new Money().setValue(itemEntry.getTaxAmount()).setCurrency(cur));
+                }
+                if (itemEntry.getPatientShareAmount() != null) {
+                    item.addExtension().setUrl(NphiesProfiles.EXT_PATIENT_SHARE)
+                            .setValue(new Money().setValue(itemEntry.getPatientShareAmount()).setCurrency(cur));
+                }
+                if (Boolean.TRUE.equals(itemEntry.getIsPackage())) {
+                    item.addExtension().setUrl(NphiesProfiles.EXT_PACKAGE)
+                            .setValue(new BooleanType(true));
                 }
 
-                // Diagnosis sequence references
+                if (itemEntry.getCareTeamSeqs() != null) {
+                    for (int seq : itemEntry.getCareTeamSeqs()) item.addCareTeamSequence(seq);
+                }
                 if (itemEntry.getDiagnosisSeqs() != null) {
-                    for (int seq : itemEntry.getDiagnosisSeqs()) {
-                        item.addDiagnosisSequence(seq);
-                    }
+                    for (int seq : itemEntry.getDiagnosisSeqs()) item.addDiagnosisSequence(seq);
                 }
 
                 String productSystem = itemEntry.getProductSystem() != null
                         ? itemEntry.getProductSystem() : NphiesProfiles.CS_PROCEDURE;
-                item.setProductOrService(new CodeableConcept().addCoding(new Coding()
-                        .setSystem(productSystem)
-                        .setCode(itemEntry.getProductCode())));
+                Coding productCoding = new Coding().setSystem(productSystem).setCode(itemEntry.getProductCode());
+                if (itemEntry.getProductDisplay() != null) productCoding.setDisplay(itemEntry.getProductDisplay());
+                item.setProductOrService(new CodeableConcept().addCoding(productCoding));
 
-                item.setServiced(new DateType(
-                        Date.from(itemEntry.getServicedDate().atStartOfDay().toInstant(ZoneOffset.UTC))));
+                item.setServiced(new DateType(toDate(itemEntry.getServicedDate())));
 
                 BigDecimal qty = itemEntry.getQty() != null ? itemEntry.getQty() : BigDecimal.ONE;
                 item.setQuantity(new Quantity().setValue(qty));
+                item.setUnitPrice(new Money().setValue(itemEntry.getUnitPrice()).setCurrency(cur));
+                item.setNet(new Money().setValue(itemEntry.getNet()).setCurrency(cur));
 
-                Money unitPrice = new Money();
-                unitPrice.setValue(itemEntry.getUnitPrice());
-                unitPrice.setCurrency(input.getCurrency() != null ? input.getCurrency() : "SAR");
-                item.setUnitPrice(unitPrice);
+                if (itemEntry.getDetail() != null) {
+                    for (ClaimBundleInput.ItemDetail d : itemEntry.getDetail()) {
+                        Claim.DetailComponent detail = new Claim.DetailComponent();
+                        detail.setSequence(d.getSequence());
 
-                Money net = new Money();
-                net.setValue(itemEntry.getNet());
-                net.setCurrency(input.getCurrency() != null ? input.getCurrency() : "SAR");
-                item.setNet(net);
+                        if (d.getTaxAmount() != null) {
+                            detail.addExtension().setUrl(NphiesProfiles.EXT_TAX)
+                                    .setValue(new Money().setValue(d.getTaxAmount()).setCurrency(cur));
+                        }
+                        if (d.getPatientShareAmount() != null) {
+                            detail.addExtension().setUrl(NphiesProfiles.EXT_PATIENT_SHARE)
+                                    .setValue(new Money().setValue(d.getPatientShareAmount()).setCurrency(cur));
+                        }
+                        if (d.getPayerShareAmount() != null) {
+                            detail.addExtension().setUrl(NphiesProfiles.EXT_PAYER_SHARE)
+                                    .setValue(new Money().setValue(d.getPayerShareAmount()).setCurrency(cur));
+                        }
+
+                        Coding dc = new Coding().setSystem(d.getProductSystem()).setCode(d.getProductCode());
+                        if (d.getProductDisplay() != null) dc.setDisplay(d.getProductDisplay());
+                        detail.setProductOrService(new CodeableConcept().addCoding(dc));
+
+                        detail.setQuantity(new Quantity().setValue(d.getQuantity()));
+                        detail.setUnitPrice(new Money().setValue(d.getUnitPrice()).setCurrency(cur));
+                        BigDecimal factor = d.getFactor() != null ? d.getFactor() : BigDecimal.ONE;
+                        detail.setFactor(factor);
+                        detail.setNet(new Money().setValue(d.getNet()).setCurrency(cur));
+
+                        item.addDetail(detail);
+                    }
+                }
 
                 claim.addItem(item);
             }
@@ -235,107 +323,163 @@ public class ClaimBundleBuilder {
         return claim;
     }
 
-    private Patient buildPatient(String id, ClaimBundleInput input) {
+    private Patient buildPatient(String id, String providerOrgUrl, ClaimBundleInput input) {
         Patient patient = new Patient();
         patient.setId(id);
-        patient.getMeta().addProfile(NphiesProfiles.PATIENT);
+        patient.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.PATIENT));
+        patient.setActive(true);
 
         String nationalId = input.getPatientNationalId().trim();
-        String idSystem = nationalId.startsWith("1")
-                ? NphiesProfiles.SYSTEM_NATIONAL_ID
-                : NphiesProfiles.SYSTEM_IQAMA;
+        boolean isSaudi   = nationalId.startsWith("1");
+        String idSystem   = isSaudi ? NphiesProfiles.SYSTEM_NATIONAL_ID : NphiesProfiles.SYSTEM_IQAMA;
+        String idTypeCode = isSaudi ? "NI" : "PRC";
 
-        patient.addIdentifier().setSystem(idSystem).setValue(nationalId);
-        patient.addName().setFamily(input.getPatientFamilyName()).addGiven(input.getPatientFirstName());
+        Identifier ident = patient.addIdentifier();
+        ident.getType().addCoding()
+                .setSystem(NphiesProfiles.CS_V2_0203)
+                .setCode(idTypeCode);
+        ident.setSystem(idSystem).setValue(nationalId);
+
+        patient.setManagingOrganization(new Reference(providerOrgUrl));
+
+        List<String> givenNames = (input.getPatientGivenNames() != null && !input.getPatientGivenNames().isEmpty())
+                ? input.getPatientGivenNames()
+                : List.of(input.getPatientFirstName());
+        HumanName name = patient.addName();
+        name.setUse(HumanName.NameUse.OFFICIAL);
+        name.setFamily(input.getPatientFamilyName());
+        givenNames.forEach(name::addGiven);
+        name.setText(String.join(" ", givenNames) + " " + input.getPatientFamilyName());
+
         patient.setGender(Enumerations.AdministrativeGender.fromCode(input.getPatientGender()));
-        patient.setBirthDate(Date.from(input.getPatientDob().atStartOfDay().toInstant(ZoneOffset.UTC)));
+        patient.getGenderElement().addExtension()
+                .setUrl(NphiesProfiles.EXT_KSA_ADMIN_GENDER)
+                .setValue(new CodeableConcept().addCoding(new Coding()
+                        .setSystem(NphiesProfiles.CS_KSA_ADMIN_GENDER)
+                        .setCode(input.getPatientGender())));
+
+        patient.setBirthDate(toDate(input.getPatientDob()));
+
+        if (input.getPatientPhone() != null) {
+            patient.addTelecom()
+                    .setSystem(ContactPoint.ContactPointSystem.PHONE)
+                    .setValue(input.getPatientPhone());
+        }
+
         return patient;
     }
 
-    private Coverage buildCoverage(String id, String patientId, String insurerId, ClaimBundleInput input) {
+    private Coverage buildCoverage(String id, String patientUrl, String insurerOrgUrl,
+                                   ClaimBundleInput input) {
         Coverage coverage = new Coverage();
         coverage.setId(id);
-        coverage.getMeta().addProfile(NphiesProfiles.COVERAGE);
-
+        coverage.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.COVERAGE));
         coverage.setStatus(Coverage.CoverageStatus.ACTIVE);
+
         coverage.addIdentifier()
                 .setSystem(NphiesProfiles.SYSTEM_MEMBER_ID)
                 .setValue(input.getMemberId());
 
-        String rel = input.getCoverageRelationship() != null ? input.getCoverageRelationship() : "self";
+        coverage.setType(new CodeableConcept().addCoding(new Coding()
+                .setSystem(NphiesProfiles.CS_COVERAGE_TYPE)
+                .setCode(input.getCoverageType())
+                .setDisplay(input.getCoverageTypeDisplay())));
+
+        coverage.setSubscriber(new Reference(patientUrl));
+        coverage.setSubscriberId(input.getMemberId());
+        coverage.setBeneficiary(new Reference(patientUrl));
+
         coverage.setRelationship(new CodeableConcept().addCoding(new Coding()
                 .setSystem(NphiesProfiles.CS_RELATIONSHIP)
-                .setCode(rel)));
+                .setCode(input.getCoverageRelationship())));
 
-        coverage.setSubscriber(new Reference("urn:uuid:" + patientId));
-        coverage.setSubscriberId(input.getMemberId());
-        coverage.setBeneficiary(new Reference("urn:uuid:" + patientId));
-        coverage.addPayor(new Reference("urn:uuid:" + insurerId));
+        if (input.getCoveragePeriodStart() != null || input.getCoveragePeriodEnd() != null) {
+            Period period = new Period();
+            if (input.getCoveragePeriodStart() != null) period.setStart(toDate(input.getCoveragePeriodStart()));
+            if (input.getCoveragePeriodEnd() != null)   period.setEnd(toDate(input.getCoveragePeriodEnd()));
+            coverage.setPeriod(period);
+        }
+
+        coverage.addPayor(new Reference(insurerOrgUrl));
         return coverage;
     }
 
     private Organization buildProviderOrg(String id, ClaimBundleInput input) {
         Organization org = new Organization();
         org.setId(id);
-        org.getMeta().addProfile(NphiesProfiles.PROVIDER_ORGANIZATION);
+        org.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.PROVIDER_ORGANIZATION));
         org.setActive(true);
         org.setName(input.getProviderName());
         org.addIdentifier()
+                .setUse(Identifier.IdentifierUse.OFFICIAL)
                 .setSystem(NphiesProfiles.SYSTEM_PROVIDER_LICENSE)
                 .setValue(input.getProviderLicenseNo());
+        org.addType().addCoding()
+                .setSystem(NphiesProfiles.CS_ORG_TYPE)
+                .setCode("prov");
         return org;
     }
 
     private Organization buildInsurerOrg(String id, ClaimBundleInput input) {
         Organization org = new Organization();
         org.setId(id);
-        org.getMeta().addProfile(NphiesProfiles.INSURER_ORGANIZATION);
+        org.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.INSURER_ORGANIZATION));
         org.setActive(true);
         org.setName(input.getPayerName());
         org.addIdentifier()
+                .setUse(Identifier.IdentifierUse.OFFICIAL)
                 .setSystem(NphiesProfiles.SYSTEM_PAYER_LICENSE)
                 .setValue(input.getPayerLicenseNo());
+        org.addType().addCoding()
+                .setSystem(NphiesProfiles.CS_ORG_TYPE)
+                .setCode("ins");
         return org;
     }
 
-    private Practitioner buildPractitioner(String id, ClaimBundleInput.CareTeamMember member) {
-        Practitioner practitioner = new Practitioner();
-        practitioner.setId(id);
-        practitioner.getMeta().addProfile(NphiesProfiles.PRACTITIONER);
-        practitioner.setActive(true);
-        practitioner.addIdentifier()
-                .setSystem(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSE)
-                .setValue(member.getPractitionerLicense());
-        practitioner.addName()
-                .setFamily(member.getFamilyName())
-                .addGiven(member.getFirstName());
-        return practitioner;
+    private PractitionerRole buildPractitionerRole(String id, String providerOrgUrl,
+                                                    ClaimBundleInput.CareTeamMember member) {
+        PractitionerRole role = new PractitionerRole();
+        role.setId(id);
+        role.getMeta().addProfile(NphiesProfiles.versioned(NphiesProfiles.PRACTITIONER_ROLE));
+        role.setActive(true);
+
+        String roleCode = member.getRoleCode() != null ? member.getRoleCode() : "primary";
+
+        role.addIdentifier()
+                .setSystem(NphiesProfiles.CS_PRACTITIONER_ROLE)
+                .setValue(roleCode);
+
+        Reference practRef = new Reference();
+        practRef.setType("Practitioner");
+        practRef.setIdentifier(new Identifier()
+                .setSystem(NphiesProfiles.SYSTEM_PRACTITIONER_LICENSES)
+                .setValue(member.getPractitionerLicense()));
+        role.setPractitioner(practRef);
+
+        role.setOrganization(new Reference(providerOrgUrl));
+
+        role.addCode().addCoding()
+                .setSystem(NphiesProfiles.CS_PRACTITIONER_ROLE)
+                .setCode(roleCode);
+
+        if (member.getQualification() != null) {
+            role.addSpecialty().addCoding()
+                    .setSystem(NphiesProfiles.CS_PRACTICE_CODES)
+                    .setCode(member.getQualification());
+        }
+
+        return role;
     }
 
-    private Encounter buildEncounter(String id, String patientId, String providerId, ClaimBundleInput input) {
-        Encounter encounter = new Encounter();
-        encounter.setId(id);
-        encounter.getMeta().addProfile(NphiesProfiles.ENCOUNTER);
-        encounter.setStatus(Encounter.EncounterStatus.FINISHED);
-
-        encounter.setClass_(new Coding()
-                .setSystem(NphiesProfiles.CS_ENCOUNTER_CLASS)
-                .setCode("AMB"));
-
-        encounter.setSubject(new Reference("urn:uuid:" + patientId));
-        encounter.setServiceProvider(new Reference("urn:uuid:" + providerId));
-
-        Period period = new Period();
-        period.setStart(Date.from(input.getBillablePeriodStart().atStartOfDay().toInstant(ZoneOffset.UTC)));
-        period.setEnd(Date.from(input.getBillablePeriodEnd().atStartOfDay().toInstant(ZoneOffset.UTC)));
-        encounter.setPeriod(period);
-
-        return encounter;
+    private Bundle.BundleEntryComponent entry(String fullUrl, Resource resource) {
+        return new Bundle.BundleEntryComponent().setFullUrl(fullUrl).setResource(resource);
     }
 
-    private Bundle.BundleEntryComponent entry(String id, Resource resource) {
-        return new Bundle.BundleEntryComponent()
-                .setFullUrl("urn:uuid:" + id)
-                .setResource(resource);
+    private String url(String base, String resourceType, String id) {
+        return base + "/" + resourceType + "/" + id;
+    }
+
+    private Date toDate(LocalDate d) {
+        return Date.from(d.atStartOfDay().toInstant(ZoneOffset.UTC));
     }
 }
