@@ -23,6 +23,7 @@ public final class NphiesProfiles {
     public static final String BUNDLE                = SD + "bundle";
     public static final String MESSAGE_HEADER        = SD + "message-header";
     public static final String ELIGIBILITY_REQUEST   = SD + "eligibility-request";
+    public static final String ELIGIBILITY_RESPONSE  = SD + "eligibility-response";
     public static final String PATIENT               = SD + "patient";
     public static final String COVERAGE              = SD + "coverage";
     public static final String PROVIDER_ORGANIZATION = SD + "provider-organization";
@@ -39,6 +40,7 @@ public final class NphiesProfiles {
             SD + "extension-ksa-administrative-gender";
     public static final String EXT_IDENTIFIER_COUNTRY =
             SD + "extension-identifier-country";
+    public static final String EXT_SITE_ELIGIBILITY = SD + "extension-siteEligibility";
     public static final String EXT_TAX              = SD + "extension-tax";
     public static final String EXT_PATIENT_SHARE    = SD + "extension-patient-share";
     public static final String EXT_PAYER_SHARE      = SD + "extension-payer-share";
@@ -94,6 +96,8 @@ public final class NphiesProfiles {
     public static final String CS_PRACTICE_CODES   = CS + "practice-codes";
     /** Claim supporting information category codes */
     public static final String CS_CLAIM_INFO_CATEGORY = CS + "claim-information-category";
+    /** Site eligibility response codes (eligible, not-eligible, …) */
+    public static final String CS_SITE_ELIGIBILITY   = CS + "siteEligibility";
 
     // ── Terminology code systems — standard HL7 ──────────────────────────────
     public static final String CS_ELIGIBILITY_PURPOSE =
