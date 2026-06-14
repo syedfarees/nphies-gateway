@@ -146,7 +146,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Write docker-compose to UAT server
+      - name: Copy docker-compose to UAT server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.UAT_SSH_HOST }}
@@ -155,17 +155,34 @@ jobs:
           source: docker-compose.yml
           target: /opt/claim-management
 
-      - name: Deploy on UAT server
+      - name: Write .env and deploy on UAT server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NPHIES_MASTER_KEY_BASE64: ${{ secrets.NPHIES_MASTER_KEY_BASE64 }}
+          BOOTSTRAP_ADMIN_PASSWORD: ${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}
+          TRACARE_INTERNAL_API_KEY: ${{ secrets.TRACARE_INTERNAL_API_KEY }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.UAT_SSH_HOST }}
           username: ${{ secrets.UAT_SSH_USER }}
           key: ${{ secrets.UAT_SSH_KEY }}
+          envs: DB_PASSWORD,JWT_SECRET,NPHIES_MASTER_KEY_BASE64,BOOTSTRAP_ADMIN_PASSWORD,TRACARE_INTERNAL_API_KEY,REPO_OWNER,GH_ACTOR,GH_TOKEN
           script: |
+            set -e
             cd /opt/claim-management
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            export IMAGE_REGISTRY="${{ env.REGISTRY }}"
-            export IMAGE_TAG="uat"
+            echo "DB_PASSWORD=${DB_PASSWORD}" > .env
+            echo "JWT_SECRET=${JWT_SECRET}" >> .env
+            echo "NPHIES_MASTER_KEY_BASE64=${NPHIES_MASTER_KEY_BASE64}" >> .env
+            echo "BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}" >> .env
+            echo "TRACARE_INTERNAL_API_KEY=${TRACARE_INTERNAL_API_KEY}" >> .env
+            echo "IMAGE_REGISTRY=ghcr.io/${REPO_OWNER}" >> .env
+            echo "IMAGE_TAG=uat" >> .env
+            chmod 600 .env
+            echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
@@ -183,7 +200,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Write docker-compose to Prod server
+      - name: Copy docker-compose to Prod server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
@@ -192,17 +209,34 @@ jobs:
           source: docker-compose.yml
           target: /opt/claim-management
 
-      - name: Deploy on Prod server
+      - name: Write .env and deploy on Prod server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NPHIES_MASTER_KEY_BASE64: ${{ secrets.NPHIES_MASTER_KEY_BASE64 }}
+          BOOTSTRAP_ADMIN_PASSWORD: ${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}
+          TRACARE_INTERNAL_API_KEY: ${{ secrets.TRACARE_INTERNAL_API_KEY }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
           username: ${{ secrets.PROD_SSH_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
+          envs: DB_PASSWORD,JWT_SECRET,NPHIES_MASTER_KEY_BASE64,BOOTSTRAP_ADMIN_PASSWORD,TRACARE_INTERNAL_API_KEY,REPO_OWNER,GH_ACTOR,GH_TOKEN
           script: |
+            set -e
             cd /opt/claim-management
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            export IMAGE_REGISTRY="${{ env.REGISTRY }}"
-            export IMAGE_TAG="latest"
+            echo "DB_PASSWORD=${DB_PASSWORD}" > .env
+            echo "JWT_SECRET=${JWT_SECRET}" >> .env
+            echo "NPHIES_MASTER_KEY_BASE64=${NPHIES_MASTER_KEY_BASE64}" >> .env
+            echo "BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}" >> .env
+            echo "TRACARE_INTERNAL_API_KEY=${TRACARE_INTERNAL_API_KEY}" >> .env
+            echo "IMAGE_REGISTRY=ghcr.io/${REPO_OWNER}" >> .env
+            echo "IMAGE_TAG=latest" >> .env
+            chmod 600 .env
+            echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
