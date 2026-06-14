@@ -166,14 +166,17 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           GH_ACTOR: ${{ github.actor }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UAT_DOMAIN: ${{ secrets.UAT_DOMAIN }}
         with:
           host: ${{ secrets.UAT_SSH_HOST }}
           username: ${{ secrets.UAT_SSH_USER }}
           key: ${{ secrets.UAT_SSH_KEY }}
-          envs: DB_PASSWORD,JWT_SECRET,NPHIES_MASTER_KEY_BASE64,BOOTSTRAP_ADMIN_PASSWORD,TRACARE_INTERNAL_API_KEY,REPO_OWNER,GH_ACTOR,GH_TOKEN
+          envs: DB_PASSWORD,JWT_SECRET,NPHIES_MASTER_KEY_BASE64,BOOTSTRAP_ADMIN_PASSWORD,TRACARE_INTERNAL_API_KEY,REPO_OWNER,GH_ACTOR,GH_TOKEN,UAT_DOMAIN
           script: |
             set -e
             cd ~/claim-management
+
+            # Write app secrets
             echo "DB_PASSWORD=${DB_PASSWORD}" > .env
             echo "JWT_SECRET=${JWT_SECRET}" >> .env
             echo "NPHIES_MASTER_KEY_BASE64=${NPHIES_MASTER_KEY_BASE64}" >> .env
@@ -181,11 +184,31 @@ jobs:
             echo "TRACARE_INTERNAL_API_KEY=${TRACARE_INTERNAL_API_KEY}" >> .env
             echo "IMAGE_REGISTRY=ghcr.io/${REPO_OWNER}" >> .env
             echo "IMAGE_TAG=uat" >> .env
+            echo "HTTP_PORT=8081" >> .env
             chmod 600 .env
+
+            # Pull and restart containers
             echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
+
+            # Configure Apache2 reverse proxy
+            CONF=/etc/apache2/sites-available/claim-management.conf
+            echo "<VirtualHost *:80>" | sudo tee "$CONF" > /dev/null
+            echo "    ServerName ${UAT_DOMAIN}" | sudo tee -a "$CONF" > /dev/null
+            echo "    ProxyPreserveHost On" | sudo tee -a "$CONF" > /dev/null
+            echo "    ProxyRequests Off" | sudo tee -a "$CONF" > /dev/null
+            echo "    ProxyPass / http://127.0.0.1:8081/" | sudo tee -a "$CONF" > /dev/null
+            echo "    ProxyPassReverse / http://127.0.0.1:8081/" | sudo tee -a "$CONF" > /dev/null
+            echo "    ErrorLog /var/log/apache2/claim-management-error.log" | sudo tee -a "$CONF" > /dev/null
+            echo "    CustomLog /var/log/apache2/claim-management-access.log combined" | sudo tee -a "$CONF" > /dev/null
+            echo "</VirtualHost>" | sudo tee -a "$CONF" > /dev/null
+
+            sudo a2enmod proxy proxy_http
+            sudo a2ensite claim-management.conf
+            sudo apache2ctl configtest
+            sudo systemctl reload apache2
 
   # ────────────────────────────────────────────────────────────────────────────
   # 3b. Deploy to Production  (main branch — requires manual approval)
