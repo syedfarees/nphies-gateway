@@ -45,6 +45,8 @@ public final class NphiesProfiles {
     public static final String EXT_PATIENT_SHARE    = SD + "extension-patient-share";
     public static final String EXT_PAYER_SHARE      = SD + "extension-payer-share";
     public static final String EXT_PACKAGE          = SD + "extension-package";
+    public static final String EXT_EPISODE          = SD + "extension-episode";
+    public static final String EXT_PATIENT_INVOICE  = SD + "extension-patientInvoice";
 
     // ── Identifier systems — license numbers ─────────────────────────────────
     /** CCHI-issued provider license number */
