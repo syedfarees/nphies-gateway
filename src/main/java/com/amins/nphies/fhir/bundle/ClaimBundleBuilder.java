@@ -156,6 +156,16 @@ public class ClaimBundleBuilder {
                             .setSystem(input.getEpisodeSystem())
                             .setValue(input.getEpisodeValue()));
         }
+        if (input.getEligibilityOfflineReference() != null) {
+            claim.addExtension()
+                    .setUrl(NphiesProfiles.EXT_ELIGIBILITY_OFFLINE_REF)
+                    .setValue(new StringType(input.getEligibilityOfflineReference()));
+        }
+        if (input.getEligibilityOfflineDate() != null) {
+            claim.addExtension()
+                    .setUrl(NphiesProfiles.EXT_ELIGIBILITY_OFFLINE_DATE)
+                    .setValue(new DateTimeType(toDate(input.getEligibilityOfflineDate())));
+        }
 
         claim.setStatus(Claim.ClaimStatus.ACTIVE);
         claim.setUse(Claim.Use.fromCode(input.getUseType()));
@@ -241,11 +251,21 @@ public class ClaimBundleBuilder {
                 sic.getCategory().addCoding()
                         .setSystem(NphiesProfiles.CS_CLAIM_INFO_CATEGORY)
                         .setCode(si.getCategoryCode());
+                if (si.getTimingPeriodStart() != null) {
+                    Period tp = new Period().setStart(toDate(si.getTimingPeriodStart()));
+                    if (si.getTimingPeriodEnd() != null) tp.setEnd(toDate(si.getTimingPeriodEnd()));
+                    sic.setTiming(tp);
+                } else if (si.getTimingDate() != null) {
+                    sic.setTiming(new DateType(toDate(si.getTimingDate())));
+                }
+
                 if (si.getQuantityValue() != null) {
                     sic.setValue(new Quantity()
                             .setValue(si.getQuantityValue())
                             .setSystem(NphiesProfiles.CS_UCUM)
                             .setCode(si.getQuantityUnit()));
+                } else if (si.getValueString() != null) {
+                    sic.setValue(new StringType(si.getValueString()));
                 } else if (si.getAttachmentData() != null) {
                     Attachment attachment = new Attachment();
                     if (si.getAttachmentContentType() != null) attachment.setContentType(si.getAttachmentContentType());
@@ -253,8 +273,6 @@ public class ClaimBundleBuilder {
                     attachment.setDataElement(new Base64BinaryType(si.getAttachmentData()));
                     if (si.getAttachmentCreation() != null) attachment.setCreation(toDate(si.getAttachmentCreation()));
                     sic.setValue(attachment);
-                } else if (si.getTimingDate() != null) {
-                    sic.setTiming(new DateType(toDate(si.getTimingDate())));
                 }
                 claim.addSupportingInfo(sic);
             }
@@ -300,7 +318,22 @@ public class ClaimBundleBuilder {
                         ? itemEntry.getProductSystem() : NphiesProfiles.CS_PROCEDURE;
                 Coding productCoding = new Coding().setSystem(productSystem).setCode(itemEntry.getProductCode());
                 if (itemEntry.getProductDisplay() != null) productCoding.setDisplay(itemEntry.getProductDisplay());
-                item.setProductOrService(new CodeableConcept().addCoding(productCoding));
+                CodeableConcept productOrService = new CodeableConcept().addCoding(productCoding);
+                if (itemEntry.getAdditionalProductCodings() != null) {
+                    for (ClaimBundleInput.AdditionalCoding ac : itemEntry.getAdditionalProductCodings()) {
+                        Coding ac2 = new Coding().setSystem(ac.getSystem()).setCode(ac.getCode());
+                        if (ac.getDisplay() != null) ac2.setDisplay(ac.getDisplay());
+                        productOrService.addCoding(ac2);
+                    }
+                }
+                item.setProductOrService(productOrService);
+
+                if (itemEntry.getBodySite() != null) {
+                    Coding bsCoding = new Coding().setCode(itemEntry.getBodySite());
+                    if (itemEntry.getBodySiteSystem() != null) bsCoding.setSystem(itemEntry.getBodySiteSystem());
+                    if (itemEntry.getBodySiteDisplay() != null) bsCoding.setDisplay(itemEntry.getBodySiteDisplay());
+                    item.setBodySite(new CodeableConcept().addCoding(bsCoding));
+                }
 
                 if (itemEntry.getServicedPeriodStart() != null) {
                     Period servicedPeriod = new Period();
@@ -316,6 +349,7 @@ public class ClaimBundleBuilder {
                 BigDecimal qty = itemEntry.getQty() != null ? itemEntry.getQty() : BigDecimal.ONE;
                 item.setQuantity(new Quantity().setValue(qty));
                 item.setUnitPrice(new Money().setValue(itemEntry.getUnitPrice()).setCurrency(cur));
+                if (itemEntry.getFactor() != null) item.setFactor(itemEntry.getFactor());
                 item.setNet(new Money().setValue(itemEntry.getNet()).setCurrency(cur));
 
                 if (itemEntry.getDetail() != null) {
@@ -338,7 +372,15 @@ public class ClaimBundleBuilder {
 
                         Coding dc = new Coding().setSystem(d.getProductSystem()).setCode(d.getProductCode());
                         if (d.getProductDisplay() != null) dc.setDisplay(d.getProductDisplay());
-                        detail.setProductOrService(new CodeableConcept().addCoding(dc));
+                        CodeableConcept detailProduct = new CodeableConcept().addCoding(dc);
+                        if (d.getAdditionalProductCodings() != null) {
+                            for (ClaimBundleInput.AdditionalCoding ac : d.getAdditionalProductCodings()) {
+                                Coding ac2 = new Coding().setSystem(ac.getSystem()).setCode(ac.getCode());
+                                if (ac.getDisplay() != null) ac2.setDisplay(ac.getDisplay());
+                                detailProduct.addCoding(ac2);
+                            }
+                        }
+                        detail.setProductOrService(detailProduct);
 
                         detail.setQuantity(new Quantity().setValue(d.getQuantity()));
                         detail.setUnitPrice(new Money().setValue(d.getUnitPrice()).setCurrency(cur));
@@ -436,6 +478,14 @@ public class ClaimBundleBuilder {
             if (input.getCoveragePeriodStart() != null) period.setStart(toDate(input.getCoveragePeriodStart()));
             if (input.getCoveragePeriodEnd() != null)   period.setEnd(toDate(input.getCoveragePeriodEnd()));
             coverage.setPeriod(period);
+        }
+
+        if (input.getCoverageClassCode() != null && input.getCoverageClassValue() != null) {
+            coverage.addClass_(new Coverage.ClassComponent()
+                    .setType(new CodeableConcept().addCoding(new Coding()
+                            .setSystem(NphiesProfiles.CS_COVERAGE_CLASS)
+                            .setCode(input.getCoverageClassCode())))
+                    .setValue(input.getCoverageClassValue()));
         }
 
         coverage.addPayor(new Reference(insurerOrgUrl));

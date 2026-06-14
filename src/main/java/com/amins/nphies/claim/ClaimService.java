@@ -267,6 +267,7 @@ public class ClaimService {
                                 .productCode(d.getProductCode())
                                 .productSystem(d.getProductSystem())
                                 .productDisplay(d.getProductDisplay())
+                                .additionalProductCodings(toAdditionalCodings(d.getAdditionalProductCodings()))
                                 .quantity(d.getQuantity() != null ? d.getQuantity() : java.math.BigDecimal.ONE)
                                 .unitPrice(d.getUnitPrice())
                                 .factor(d.getFactor())
@@ -284,13 +285,17 @@ public class ClaimService {
                         .productCode(itemDto.getProductServiceCode())
                         .productSystem(itemDto.getProductServiceSystem())
                         .productDisplay(itemDto.getProductServiceDisplay())
+                        .additionalProductCodings(toAdditionalCodings(itemDto.getAdditionalProductCodings()))
                         .servicedDate(itemDto.getServicedDate())
                         .servicedPeriodStart(itemDto.getServicedPeriodStart())
                         .servicedPeriodEnd(itemDto.getServicedPeriodEnd())
                         .qty(itemDto.getQuantity())
                         .unitPrice(itemDto.getUnitPrice())
+                        .factor(itemDto.getFactor())
                         .net(itemDto.getNetAmount())
                         .bodySite(itemDto.getBodySiteCode())
+                        .bodySiteSystem(itemDto.getBodySiteSystem())
+                        .bodySiteDisplay(itemDto.getBodySiteDisplay())
                         .modifiers(itemDto.getModifierCodes())
                         .taxAmount(itemDto.getTaxAmount())
                         .patientShareAmount(itemDto.getPatientShareAmount())
@@ -312,6 +317,9 @@ public class ClaimService {
                         .quantityValue(si.getQuantityValue())
                         .quantityUnit(si.getQuantityUnit())
                         .timingDate(si.getTimingDate())
+                        .timingPeriodStart(si.getTimingPeriodStart())
+                        .timingPeriodEnd(si.getTimingPeriodEnd())
+                        .valueString(si.getValueString())
                         .attachmentContentType(si.getAttachmentContentType())
                         .attachmentTitle(si.getAttachmentTitle())
                         .attachmentData(si.getAttachmentData())
@@ -327,6 +335,10 @@ public class ClaimService {
                 .claimSubType(req.getClaimSubType())
                 .episodeSystem(req.getEpisodeSystem())
                 .episodeValue(req.getEpisodeValue())
+                .eligibilityOfflineReference(req.getEligibilityOfflineReference())
+                .eligibilityOfflineDate(req.getEligibilityOfflineDate())
+                .coverageClassCode(req.getCoverageClassCode())
+                .coverageClassValue(req.getCoverageClassValue())
                 .priority(claim.getPriority())
                 .patientNationalId(beneficiary.getNationalId())
                 .patientFirstName(beneficiary.getFirstName())
@@ -351,6 +363,20 @@ public class ClaimService {
                 .items(itemEntries)
                 .supportingInfo(siEntries.isEmpty() ? null : siEntries)
                 .build();
+    }
+
+    private List<ClaimBundleInput.AdditionalCoding> toAdditionalCodings(
+            List<ClaimRequest.AdditionalCodingDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) return null;
+        List<ClaimBundleInput.AdditionalCoding> result = new ArrayList<>();
+        for (ClaimRequest.AdditionalCodingDto d : dtos) {
+            result.add(ClaimBundleInput.AdditionalCoding.builder()
+                    .system(d.getSystem())
+                    .code(d.getCode())
+                    .display(d.getDisplay())
+                    .build());
+        }
+        return result;
     }
 
     private void persistClaimResponse(Claim claim, String tenantId, String rawJson, ClaimResponseDto dto) {

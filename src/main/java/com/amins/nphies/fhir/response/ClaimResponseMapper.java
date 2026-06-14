@@ -2,6 +2,7 @@ package com.amins.nphies.fhir.response;
 
 import ca.uhn.fhir.parser.IParser;
 import com.amins.nphies.claim.dto.ClaimResponseDto;
+import com.amins.nphies.fhir.NphiesProfiles;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hl7.fhir.r4.model.*;
@@ -10,7 +11,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 
 @Component
 @RequiredArgsConstructor
@@ -54,6 +54,16 @@ public class ClaimResponseMapper {
 
             String disposition = claimResponse.getDisposition();
 
+            String adjudicationOutcomeCode = null;
+            for (Extension ext : claimResponse.getExtension()) {
+                if (NphiesProfiles.EXT_ADJUDICATION_OUTCOME.equals(ext.getUrl())
+                        && ext.getValue() instanceof CodeableConcept cc
+                        && !cc.getCoding().isEmpty()) {
+                    adjudicationOutcomeCode = cc.getCodingFirstRep().getCode();
+                    break;
+                }
+            }
+
             BigDecimal totalBenefit = null;
             BigDecimal totalSubmitted = null;
             if (claimResponse.hasTotal()) {
@@ -78,8 +88,7 @@ public class ClaimResponseMapper {
                             ? payment.getAmount().getCurrency() : "SAR";
                 }
                 if (payment.hasDate()) {
-                    paymentDate = payment.getDate().toInstant()
-                            .atZone(ZoneOffset.UTC).toLocalDate();
+                    paymentDate = LocalDate.parse(payment.getDateElement().getValueAsString());
                 }
             }
 
@@ -87,6 +96,7 @@ public class ClaimResponseMapper {
                     .bundleId(responseBundleId)
                     .outcome(outcome)
                     .disposition(disposition)
+                    .adjudicationOutcomeCode(adjudicationOutcomeCode)
                     .totalBenefit(totalBenefit)
                     .totalSubmitted(totalSubmitted)
                     .paymentAmount(paymentAmount)
