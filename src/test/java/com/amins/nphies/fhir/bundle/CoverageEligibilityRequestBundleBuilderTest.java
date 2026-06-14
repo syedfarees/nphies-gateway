@@ -21,6 +21,7 @@ class CoverageEligibilityRequestBundleBuilderTest {
 
     private static final String PROVIDER_LICENSE = "N-F-0000001";
     private static final String PAYER_LICENSE    = "INS-0000001";
+    private static final String BASE_URL         = "http://provider.com";
 
     @BeforeAll
     static void setUpOnce() {
@@ -52,115 +53,186 @@ class CoverageEligibilityRequestBundleBuilderTest {
     }
 
     @Test
-    void build_validInput_hasSixEntries() {
+    void build_validInput_bundleProfileIsVersioned() {
         Bundle bundle = parse(builder.build(minimalInput().build()));
-        // MessageHeader, CoverageEligibilityRequest, Patient, Coverage, Org(provider), Org(insurer)
-        assertThat(bundle.getEntry()).hasSize(6);
+        assertThat(bundle.getMeta().getProfile())
+                .anyMatch(p -> p.getValue().equals(NphiesProfiles.versioned(NphiesProfiles.BUNDLE)));
     }
 
     @Test
-    void build_validInput_firstEntryIsMessageHeader() {
+    void build_validInput_hasSixEntries() {
         Bundle bundle = parse(builder.build(minimalInput().build()));
-        assertThat(bundle.getEntry().get(0).getResource())
+        assertThat(bundle.getEntry()).hasSize(6);
+    }
+
+    // ── Entry order ───────────────────────────────────────────────────────────
+
+    @Test
+    void build_entryOrder_messageHeaderFirst() {
+        assertThat(parse(builder.build(minimalInput().build())).getEntry().get(0).getResource())
                 .isInstanceOf(MessageHeader.class);
     }
 
     @Test
-    void build_validInput_secondEntryIsCoverageEligibilityRequest() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        assertThat(bundle.getEntry().get(1).getResource())
+    void build_entryOrder_cerqSecond() {
+        assertThat(parse(builder.build(minimalInput().build())).getEntry().get(1).getResource())
                 .isInstanceOf(CoverageEligibilityRequest.class);
+    }
+
+    @Test
+    void build_entryOrder_coverageThird() {
+        assertThat(parse(builder.build(minimalInput().build())).getEntry().get(2).getResource())
+                .isInstanceOf(Coverage.class);
+    }
+
+    @Test
+    void build_entryOrder_providerOrgFourth() {
+        Organization org = (Organization) parse(builder.build(minimalInput().build())).getEntry().get(3).getResource();
+        assertThat(org.getIdentifierFirstRep().getSystem()).isEqualTo(NphiesProfiles.SYSTEM_PROVIDER_LICENSE);
+    }
+
+    @Test
+    void build_entryOrder_patientFifth() {
+        assertThat(parse(builder.build(minimalInput().build())).getEntry().get(4).getResource())
+                .isInstanceOf(Patient.class);
+    }
+
+    @Test
+    void build_entryOrder_insurerOrgSixth() {
+        Organization org = (Organization) parse(builder.build(minimalInput().build())).getEntry().get(5).getResource();
+        assertThat(org.getIdentifierFirstRep().getSystem()).isEqualTo(NphiesProfiles.SYSTEM_PAYER_LICENSE);
+    }
+
+    // ── fullUrl scheme ────────────────────────────────────────────────────────
+
+    @Test
+    void build_messageHeader_fullUrlIsUrnUuid() {
+        assertThat(parse(builder.build(minimalInput().build())).getEntry().get(0).getFullUrl())
+                .startsWith("urn:uuid:");
+    }
+
+    @Test
+    void build_otherEntries_fullUrlsUseProviderBaseUrl() {
+        parse(builder.build(minimalInput().build())).getEntry().stream().skip(1)
+                .forEach(e -> assertThat(e.getFullUrl()).startsWith(BASE_URL));
     }
 
     // ── MessageHeader ─────────────────────────────────────────────────────────
 
     @Test
     void build_messageHeader_eventCodeIsEligibilityRequest() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        MessageHeader hdr = (MessageHeader) bundle.getEntry().get(0).getResource();
-
+        MessageHeader hdr = msgHeader(parse(builder.build(minimalInput().build())));
         Coding event = (Coding) hdr.getEvent();
         assertThat(event.getSystem()).isEqualTo(NphiesProfiles.CS_MESSAGE_EVENTS);
         assertThat(event.getCode()).isEqualTo(NphiesEndpoints.EVENT_ELIGIBILITY_REQUEST);
     }
 
     @Test
-    void build_messageHeader_sourceEndpointContainsProviderLicense() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        MessageHeader hdr = (MessageHeader) bundle.getEntry().get(0).getResource();
-        assertThat(hdr.getSource().getEndpoint()).contains(PROVIDER_LICENSE);
+    void build_messageHeader_sourceEndpointIsProviderBaseUrl() {
+        MessageHeader hdr = msgHeader(parse(builder.build(minimalInput().build())));
+        assertThat(hdr.getSource().getEndpoint()).isEqualTo(BASE_URL);
     }
 
     @Test
-    void build_messageHeader_profileIsSet() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        MessageHeader hdr = (MessageHeader) bundle.getEntry().get(0).getResource();
-        assertThat(hdr.getMeta().getProfile()).anyMatch(
-                p -> p.getValue().equals(NphiesProfiles.MESSAGE_HEADER));
+    void build_messageHeader_hasSenderWithProviderLicense() {
+        MessageHeader hdr = msgHeader(parse(builder.build(minimalInput().build())));
+        assertThat(hdr.getSender().getType()).isEqualTo("Organization");
+        assertThat(hdr.getSender().getIdentifier().getSystem())
+                .isEqualTo(NphiesProfiles.SYSTEM_PROVIDER_LICENSE);
+        assertThat(hdr.getSender().getIdentifier().getValue()).isEqualTo(PROVIDER_LICENSE);
+    }
+
+    @Test
+    void build_messageHeader_destinationHasNphiesEndpointAndReceiver() {
+        MessageHeader hdr = msgHeader(parse(builder.build(minimalInput().build())));
+        MessageHeader.MessageDestinationComponent dest = hdr.getDestinationFirstRep();
+        assertThat(dest.getEndpoint()).isEqualTo(NphiesEndpoints.NPHIES_DESTINATION_ENDPOINT);
+        assertThat(dest.getReceiver().getType()).isEqualTo("Organization");
+        assertThat(dest.getReceiver().getIdentifier().getSystem())
+                .isEqualTo(NphiesProfiles.SYSTEM_PAYER_LICENSE);
+        assertThat(dest.getReceiver().getIdentifier().getValue()).isEqualTo(PAYER_LICENSE);
+    }
+
+    @Test
+    void build_messageHeader_profileIsVersioned() {
+        MessageHeader hdr = msgHeader(parse(builder.build(minimalInput().build())));
+        assertThat(hdr.getMeta().getProfile())
+                .anyMatch(p -> p.getValue().equals(NphiesProfiles.versioned(NphiesProfiles.MESSAGE_HEADER)));
     }
 
     // ── CoverageEligibilityRequest ────────────────────────────────────────────
 
     @Test
     void build_cerq_statusIsActive() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        CoverageEligibilityRequest cerq = cerq(bundle);
-        assertThat(cerq.getStatus())
+        assertThat(cerq(parse(builder.build(minimalInput().build()))).getStatus())
                 .isEqualTo(CoverageEligibilityRequest.EligibilityRequestStatus.ACTIVE);
     }
 
     @Test
     void build_cerq_defaultPurposeIsBenefits() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        CoverageEligibilityRequest cerq = cerq(bundle);
+        CoverageEligibilityRequest cerq = cerq(parse(builder.build(minimalInput().build())));
         assertThat(cerq.getPurpose()).hasSize(1);
         assertThat(cerq.getPurpose().get(0).getValueAsString()).isEqualTo("benefits");
     }
 
     @Test
     void build_cerq_multiplePurposesAllPresent() {
-        EligibilityRequestInput input = minimalInput()
-                .purposes(List.of("benefits", "discovery"))
-                .build();
-        CoverageEligibilityRequest cerq = cerq(parse(builder.build(input)));
-        List<String> codes = cerq.getPurpose().stream()
-                .map(Enumeration::getValueAsString)
-                .toList();
+        EligibilityRequestInput input = minimalInput().purposes(List.of("benefits", "discovery")).build();
+        List<String> codes = cerq(parse(builder.build(input))).getPurpose().stream()
+                .map(Enumeration::getValueAsString).toList();
         assertThat(codes).containsExactlyInAnyOrder("benefits", "discovery");
     }
 
     @Test
-    void build_cerq_servicedDateIsToday_whenInputIsNull() {
-        EligibilityRequestInput input = minimalInput().servicedDate(null).build();
-        CoverageEligibilityRequest cerq = cerq(parse(builder.build(input)));
-        assertThat(cerq.getServiced()).isNotNull();
+    void build_cerq_hasIdentifier() {
+        CoverageEligibilityRequest cerq = cerq(parse(builder.build(minimalInput().build())));
+        assertThat(cerq.getIdentifier()).isNotEmpty();
+        assertThat(cerq.getIdentifierFirstRep().getValue()).isNotBlank();
     }
 
     @Test
-    void build_cerq_profileIsSet() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        CoverageEligibilityRequest cerq = cerq(bundle);
-        assertThat(cerq.getMeta().getProfile()).anyMatch(
-                p -> p.getValue().equals(NphiesProfiles.ELIGIBILITY_REQUEST));
+    void build_cerq_hasServicedPeriod() {
+        CoverageEligibilityRequest cerq = cerq(parse(builder.build(minimalInput().build())));
+        assertThat(cerq.getServiced()).isInstanceOf(Period.class);
+        Period p = (Period) cerq.getServiced();
+        assertThat(p.getStart()).isNotNull();
+        assertThat(p.getEnd()).isNotNull();
+    }
+
+    @Test
+    void build_cerq_servicedPeriodDefaultsToToday_whenInputIsNull() {
+        EligibilityRequestInput input = minimalInput().servicedDate(null).build();
+        assertThat(cerq(parse(builder.build(input))).getServiced()).isNotNull();
+    }
+
+    @Test
+    void build_cerq_hasPriorityStat() {
+        CoverageEligibilityRequest cerq = cerq(parse(builder.build(minimalInput().build())));
+        assertThat(cerq.getPriority().getCodingFirstRep().getCode()).isEqualTo("stat");
+        assertThat(cerq.getPriority().getCodingFirstRep().getSystem())
+                .isEqualTo(NphiesProfiles.CS_PROCESS_PRIORITY);
+    }
+
+    @Test
+    void build_cerq_profileIsVersioned() {
+        assertThat(cerq(parse(builder.build(minimalInput().build()))).getMeta().getProfile())
+                .anyMatch(p -> p.getValue().equals(
+                        NphiesProfiles.versioned(NphiesProfiles.ELIGIBILITY_REQUEST)));
     }
 
     // ── Patient ───────────────────────────────────────────────────────────────
 
     @Test
     void build_patient_saudiIdUsesNationalIdSystem() {
-        // Saudi national ID starts with 1
         EligibilityRequestInput input = minimalInput().patientNationalId("1234567890").build();
-        Patient patient = patient(parse(builder.build(input)));
-        assertThat(patient.getIdentifierFirstRep().getSystem())
+        assertThat(patient(parse(builder.build(input))).getIdentifierFirstRep().getSystem())
                 .isEqualTo(NphiesProfiles.SYSTEM_NATIONAL_ID);
     }
 
     @Test
     void build_patient_iqamaIdUsesIqamaSystem() {
-        // Iqama starts with 2
         EligibilityRequestInput input = minimalInput().patientNationalId("2987654321").build();
-        Patient patient = patient(parse(builder.build(input)));
-        assertThat(patient.getIdentifierFirstRep().getSystem())
+        assertThat(patient(parse(builder.build(input))).getIdentifierFirstRep().getSystem())
                 .isEqualTo(NphiesProfiles.SYSTEM_IQAMA);
     }
 
@@ -172,9 +244,40 @@ class CoverageEligibilityRequestBundleBuilderTest {
     }
 
     @Test
+    void build_patient_nameUseIsOfficial() {
+        assertThat(patient(parse(builder.build(minimalInput().build()))).getNameFirstRep().getUse())
+                .isEqualTo(HumanName.NameUse.OFFICIAL);
+    }
+
+    @Test
+    void build_patient_nameTextIsSet() {
+        assertThat(patient(parse(builder.build(minimalInput().build()))).getNameFirstRep().getText())
+                .isNotBlank();
+    }
+
+    @Test
     void build_patient_genderIsSet() {
+        assertThat(patient(parse(builder.build(minimalInput().build()))).getGender())
+                .isEqualTo(Enumerations.AdministrativeGender.MALE);
+    }
+
+    @Test
+    void build_patient_genderHasKsaExtension() {
         Patient patient = patient(parse(builder.build(minimalInput().build())));
-        assertThat(patient.getGender()).isEqualTo(Enumerations.AdministrativeGender.MALE);
+        boolean hasExt = patient.getGenderElement().getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_KSA_ADMIN_GENDER.equals(e.getUrl()));
+        assertThat(hasExt).isTrue();
+    }
+
+    @Test
+    void build_patient_hasManagingOrganization() {
+        assertThat(patient(parse(builder.build(minimalInput().build())))
+                .getManagingOrganization().getReference()).isNotBlank();
+    }
+
+    @Test
+    void build_patient_isActive() {
+        assertThat(patient(parse(builder.build(minimalInput().build()))).getActive()).isTrue();
     }
 
     // ── Coverage ──────────────────────────────────────────────────────────────
@@ -189,8 +292,22 @@ class CoverageEligibilityRequestBundleBuilderTest {
 
     @Test
     void build_coverage_defaultRelationshipIsSelf() {
+        assertThat(coverage(parse(builder.build(minimalInput().build())))
+                .getRelationship().getCodingFirstRep().getCode()).isEqualTo("self");
+    }
+
+    @Test
+    void build_coverage_hasTypeCodingEhcpol() {
         Coverage coverage = coverage(parse(builder.build(minimalInput().build())));
-        assertThat(coverage.getRelationship().getCodingFirstRep().getCode()).isEqualTo("self");
+        assertThat(coverage.getType().getCodingFirstRep().getSystem())
+                .isEqualTo(NphiesProfiles.CS_COVERAGE_TYPE);
+        assertThat(coverage.getType().getCodingFirstRep().getCode()).isEqualTo("EHCPOL");
+    }
+
+    @Test
+    void build_coverage_hasPolicyHolder() {
+        assertThat(coverage(parse(builder.build(minimalInput().build())))
+                .getPolicyHolder().getReference()).isNotBlank();
     }
 
     // ── Organisations ─────────────────────────────────────────────────────────
@@ -204,11 +321,33 @@ class CoverageEligibilityRequestBundleBuilderTest {
     }
 
     @Test
+    void build_providerOrg_identifierUseIsOfficial() {
+        assertThat(providerOrg(parse(builder.build(minimalInput().build())))
+                .getIdentifierFirstRep().getUse()).isEqualTo(Identifier.IdentifierUse.OFFICIAL);
+    }
+
+    @Test
+    void build_providerOrg_hasTypeCodeProv() {
+        Organization org = providerOrg(parse(builder.build(minimalInput().build())));
+        assertThat(org.getTypeFirstRep().getCodingFirstRep().getCode()).isEqualTo("prov");
+        assertThat(org.getTypeFirstRep().getCodingFirstRep().getSystem())
+                .isEqualTo(NphiesProfiles.CS_ORG_TYPE);
+    }
+
+    @Test
     void build_insurerOrg_licenseIdentifierIsSet() {
         Organization org = insurerOrg(parse(builder.build(minimalInput().build())));
         assertThat(org.getIdentifierFirstRep().getSystem())
                 .isEqualTo(NphiesProfiles.SYSTEM_PAYER_LICENSE);
         assertThat(org.getIdentifierFirstRep().getValue()).isEqualTo(PAYER_LICENSE);
+    }
+
+    @Test
+    void build_insurerOrg_hasTypeCodeIns() {
+        Organization org = insurerOrg(parse(builder.build(minimalInput().build())));
+        assertThat(org.getTypeFirstRep().getCodingFirstRep().getCode()).isEqualTo("ins");
+        assertThat(org.getTypeFirstRep().getCodingFirstRep().getSystem())
+                .isEqualTo(NphiesProfiles.CS_ORG_TYPE);
     }
 
     // ── Validation guards ─────────────────────────────────────────────────────
@@ -229,44 +368,21 @@ class CoverageEligibilityRequestBundleBuilderTest {
                 .hasMessageContaining("alien");
     }
 
-    // ── All fullUrls are urn:uuid: ────────────────────────────────────────────
-
-    @Test
-    void build_allEntryFullUrlsUseUrnUuidScheme() {
-        Bundle bundle = parse(builder.build(minimalInput().build()));
-        bundle.getEntry().forEach(e ->
-                assertThat(e.getFullUrl()).startsWith("urn:uuid:"));
-    }
-
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private Bundle parse(String json) {
-        return parser.parseResource(Bundle.class, json);
-    }
+    private Bundle parse(String json) { return parser.parseResource(Bundle.class, json); }
 
-    private CoverageEligibilityRequest cerq(Bundle b) {
-        return (CoverageEligibilityRequest) b.getEntry().get(1).getResource();
-    }
-
-    private Patient patient(Bundle b) {
-        return (Patient) b.getEntry().get(2).getResource();
-    }
-
-    private Coverage coverage(Bundle b) {
-        return (Coverage) b.getEntry().get(3).getResource();
-    }
-
-    private Organization providerOrg(Bundle b) {
-        return (Organization) b.getEntry().get(4).getResource();
-    }
-
-    private Organization insurerOrg(Bundle b) {
-        return (Organization) b.getEntry().get(5).getResource();
-    }
+    private MessageHeader             msgHeader(Bundle b) { return (MessageHeader)             b.getEntry().get(0).getResource(); }
+    private CoverageEligibilityRequest cerq(Bundle b)     { return (CoverageEligibilityRequest) b.getEntry().get(1).getResource(); }
+    private Coverage                  coverage(Bundle b)  { return (Coverage)                  b.getEntry().get(2).getResource(); }
+    private Organization              providerOrg(Bundle b){ return (Organization)              b.getEntry().get(3).getResource(); }
+    private Patient                   patient(Bundle b)    { return (Patient)                   b.getEntry().get(4).getResource(); }
+    private Organization              insurerOrg(Bundle b) { return (Organization)              b.getEntry().get(5).getResource(); }
 
     private EligibilityRequestInput.EligibilityRequestInputBuilder minimalInput() {
         return EligibilityRequestInput.builder()
                 .requestId(UUID.randomUUID().toString())
+                .providerBaseUrl(BASE_URL)
                 .patientNationalId("1234567890")
                 .patientFirstName("Ahmed")
                 .patientFamilyName("Al-Test")

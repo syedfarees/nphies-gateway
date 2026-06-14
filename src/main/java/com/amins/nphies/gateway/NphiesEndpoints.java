@@ -21,6 +21,10 @@ public final class NphiesEndpoints {
     public static final String CLAIM_RESPONSE_ENDPOINT  = "/ClaimResponse";
     public static final String COMMUNICATION_ENDPOINT   = "/Communication";
 
+    // ── MessageHeader destination endpoint ───────────────────────────────────
+    /** Fixed NPHIES routing/connectivity server endpoint used in MessageHeader.destination */
+    public static final String NPHIES_DESTINATION_ENDPOINT = "http://10.1.24.10/";
+
     // ── FHIR MessageHeader event codes (NPHIES-specific) ────────────────────
     public static final String EVENT_ELIGIBILITY_REQUEST  = "eligibility-request";
     public static final String EVENT_PRIORAUTH_REQUEST    = "priorauth-request";
