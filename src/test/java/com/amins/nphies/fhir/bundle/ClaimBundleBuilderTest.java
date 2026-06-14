@@ -780,4 +780,264 @@ class ClaimBundleBuilderTest {
         Claim claim = (Claim) bundle.getEntry().get(1).getResource();
         assertThat(claim.hasTotal()).isFalse();
     }
+
+    // ── Item bodySite ─────────────────────────────────────────────────────────
+
+    @Test
+    void build_item_bodySiteIsEmittedWithSystemAndDisplay() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("PROC-001")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(100)).net(BigDecimal.valueOf(100))
+                        .bodySite("UL")
+                        .bodySiteSystem("http://nphies.sa/CodeSystem/body-site")
+                        .bodySiteDisplay("Upper Lip")
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getItemFirstRep().getBodySite()).isNotNull();
+        Coding bsCoding = claim.getItemFirstRep().getBodySite().getCodingFirstRep();
+        assertThat(bsCoding.getCode()).isEqualTo("UL");
+        assertThat(bsCoding.getSystem()).isEqualTo("http://nphies.sa/CodeSystem/body-site");
+        assertThat(bsCoding.getDisplay()).isEqualTo("Upper Lip");
+    }
+
+    @Test
+    void build_item_bodySiteIsAbsentWhenNotProvided() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("PROC-001")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(100)).net(BigDecimal.valueOf(100))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getItemFirstRep().hasBodySite()).isFalse();
+    }
+
+    // ── Item factor ───────────────────────────────────────────────────────────
+
+    @Test
+    void build_item_factorIsEmittedWhenProvided() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("PROC-001")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(100)).net(BigDecimal.valueOf(100))
+                        .factor(BigDecimal.ONE)
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getItemFirstRep().getFactor()).isEqualByComparingTo(BigDecimal.ONE);
+    }
+
+    // ── Item additional product codings ───────────────────────────────────────
+
+    @Test
+    void build_item_additionalProductCodingsAreEmitted() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("D6610")
+                        .productSystem("http://nphies.sa/CodeSystem/oral")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(500)).net(BigDecimal.valueOf(500))
+                        .additionalProductCodings(List.of(
+                                ClaimBundleInput.AdditionalCoding.builder()
+                                        .system("http://nphies.sa/CodeSystem/icd-10-am")
+                                        .code("S0201")
+                                        .display("Extra code")
+                                        .build()))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        List<Coding> codings = claim.getItemFirstRep().getProductOrService().getCoding();
+        assertThat(codings).hasSizeGreaterThan(1);
+        assertThat(codings).anyMatch(c -> "S0201".equals(c.getCode())
+                && "http://nphies.sa/CodeSystem/icd-10-am".equals(c.getSystem()));
+    }
+
+    // ── Item detail additional product codings ────────────────────────────────
+
+    @Test
+    void build_itemDetail_additionalProductCodingsAreEmitted() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .items(List.of(ClaimBundleInput.ClaimItemEntry.builder()
+                        .sequence(1).productCode("PKG-01")
+                        .servicedDate(LocalDate.of(2025, 1, 15))
+                        .unitPrice(BigDecimal.valueOf(1000)).net(BigDecimal.valueOf(1000))
+                        .detail(List.of(ClaimBundleInput.ItemDetail.builder()
+                                .sequence(1)
+                                .productCode("96037-00-00")
+                                .productSystem("http://nphies.sa/CodeSystem/procedures")
+                                .unitPrice(BigDecimal.valueOf(500))
+                                .net(BigDecimal.valueOf(500))
+                                .additionalProductCodings(List.of(
+                                        ClaimBundleInput.AdditionalCoding.builder()
+                                                .system("http://nphies.sa/CodeSystem/icd-10-am")
+                                                .code("S0201").build()))
+                                .build()))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        List<Coding> codings = claim.getItemFirstRep().getDetailFirstRep()
+                .getProductOrService().getCoding();
+        assertThat(codings).hasSizeGreaterThan(1);
+        assertThat(codings).anyMatch(c -> "S0201".equals(c.getCode()));
+    }
+
+    // ── Supporting info timingPeriod ──────────────────────────────────────────
+
+    @Test
+    void build_supportingInfo_timingPeriodIsUsedWhenSet() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .supportingInfo(List.of(ClaimBundleInput.SupportingInfoEntry.builder()
+                        .sequence(1).categoryCode("hospitalized")
+                        .timingPeriodStart(LocalDate.of(2025, 1, 1))
+                        .timingPeriodEnd(LocalDate.of(2025, 1, 31))
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getSupportingInfoFirstRep().getTiming()).isInstanceOf(Period.class);
+        Period p = (Period) claim.getSupportingInfoFirstRep().getTiming();
+        assertThat(p.getStart()).isNotNull();
+        assertThat(p.getEnd()).isNotNull();
+    }
+
+    // ── Supporting info valueString ───────────────────────────────────────────
+
+    @Test
+    void build_supportingInfo_valueStringIsEmittedWhenProvided() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .supportingInfo(List.of(ClaimBundleInput.SupportingInfoEntry.builder()
+                        .sequence(1).categoryCode("info")
+                        .valueString("some free text info")
+                        .build()))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        assertThat(claim.getSupportingInfoFirstRep().getValue()).isInstanceOf(StringType.class);
+        assertThat(((StringType) claim.getSupportingInfoFirstRep().getValue()).getValue())
+                .isEqualTo("some free text info");
+    }
+
+    // ── Claim eligibility offline extensions ──────────────────────────────────
+
+    @Test
+    void build_claim_eligibilityOfflineExtensionsAreSet() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .eligibilityOfflineReference("ELG-REF-001")
+                .eligibilityOfflineDate(LocalDate.of(2025, 1, 1))
+                .build();
+        Bundle bundle = parse(input);
+        Claim claim = (Claim) bundle.getEntry().get(1).getResource();
+        boolean hasRef = claim.getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_ELIGIBILITY_OFFLINE_REF.equals(e.getUrl())
+                        && e.getValue() instanceof StringType sv
+                        && "ELG-REF-001".equals(sv.getValue()));
+        boolean hasDate = claim.getExtension().stream()
+                .anyMatch(e -> NphiesProfiles.EXT_ELIGIBILITY_OFFLINE_DATE.equals(e.getUrl()));
+        assertThat(hasRef).isTrue();
+        assertThat(hasDate).isTrue();
+    }
+
+    // ── Coverage class ────────────────────────────────────────────────────────
+
+    @Test
+    void build_coverage_classIsEmittedWhenProvided() {
+        ClaimBundleInput input = ClaimBundleInput.builder()
+                .requestId("b1").providerBaseUrl(BASE_URL)
+                .useType("claim").claimType("institutional").priority("normal")
+                .patientNationalId("1234567890").patientFirstName("X").patientFamilyName("Y")
+                .patientDob(LocalDate.of(1990, 1, 1)).patientGender("male")
+                .memberId("M1").payerLicenseNo(PAYER_LICENSE).payerName("Ins")
+                .providerLicenseNo(PROVIDER_LICENSE).providerName("Hosp")
+                .billablePeriodStart(LocalDate.of(2025, 1, 1)).billablePeriodEnd(LocalDate.of(2025, 1, 31))
+                .coverageClassCode("plan")
+                .coverageClassValue("P9")
+                .build();
+        Bundle bundle = parse(input);
+        Coverage coverage = bundle.getEntry().stream()
+                .map(Bundle.BundleEntryComponent::getResource)
+                .filter(r -> r instanceof Coverage)
+                .map(r -> (Coverage) r)
+                .findFirst().orElseThrow();
+        assertThat(coverage.getClass_()).hasSize(1);
+        assertThat(coverage.getClass_().get(0).getType().getCodingFirstRep().getCode())
+                .isEqualTo("plan");
+        assertThat(coverage.getClass_().get(0).getValue()).isEqualTo("P9");
+    }
+
+    @Test
+    void build_coverage_classIsAbsentWhenNotProvided() {
+        Bundle bundle = parse(minimalInput());
+        Coverage coverage = bundle.getEntry().stream()
+                .map(Bundle.BundleEntryComponent::getResource)
+                .filter(r -> r instanceof Coverage)
+                .map(r -> (Coverage) r)
+                .findFirst().orElseThrow();
+        assertThat(coverage.getClass_()).isEmpty();
+    }
 }

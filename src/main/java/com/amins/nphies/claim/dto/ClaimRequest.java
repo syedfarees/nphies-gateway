@@ -46,6 +46,10 @@ public class ClaimRequest {
 
     private String episodeSystem;
     private String episodeValue;
+    private String eligibilityOfflineReference;
+    private LocalDate eligibilityOfflineDate;
+    private String coverageClassCode;
+    private String coverageClassValue;
 
     @Valid
     private List<CareTeamEntry> careTeam;
@@ -101,10 +105,15 @@ public class ClaimRequest {
         private BigDecimal quantity = BigDecimal.ONE;
         @NotNull
         private BigDecimal unitPrice;
+        private BigDecimal factor;
         @NotNull
         private BigDecimal netAmount;
         @Size(max = 50)
         private String bodySiteCode;
+        @Size(max = 255)
+        private String bodySiteSystem;
+        @Size(max = 255)
+        private String bodySiteDisplay;
         private String[] modifierCodes;
         private BigDecimal taxAmount;
         private BigDecimal patientShareAmount;
@@ -112,6 +121,8 @@ public class ClaimRequest {
         private Boolean isPackage;
         private String patientInvoiceSystem;
         private String patientInvoiceValue;
+        @Valid
+        private List<AdditionalCodingDto> additionalProductCodings;
         @Valid
         private List<ItemDetailDto> detail;
     }
@@ -137,6 +148,8 @@ public class ClaimRequest {
         private BigDecimal taxAmount;
         private BigDecimal patientShareAmount;
         private BigDecimal payerShareAmount;
+        @Valid
+        private List<AdditionalCodingDto> additionalProductCodings;
     }
 
     @Getter
@@ -150,9 +163,25 @@ public class ClaimRequest {
         @Size(max = 20)
         private String quantityUnit;
         private LocalDate timingDate;
+        private LocalDate timingPeriodStart;
+        private LocalDate timingPeriodEnd;
+        private String valueString;
         private String attachmentContentType;
         private String attachmentTitle;
         private String attachmentData;
         private LocalDate attachmentCreation;
+    }
+
+    @Getter
+    @Setter
+    public static class AdditionalCodingDto {
+        @NotNull
+        @Size(max = 255)
+        private String system;
+        @NotNull
+        @Size(max = 100)
+        private String code;
+        @Size(max = 255)
+        private String display;
     }
 }

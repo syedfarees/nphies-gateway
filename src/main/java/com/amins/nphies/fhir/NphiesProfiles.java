@@ -30,6 +30,8 @@ public final class NphiesProfiles {
     public static final String INSURER_ORGANIZATION  = SD + "insurer-organization";
     public static final String CLAIM                 = SD + "claim";
     public static final String INSTITUTIONAL_CLAIM   = SD + "institutional-claim";
+    public static final String PROFESSIONAL_CLAIM    = SD + "professional-claim";
+    public static final String ORAL_CLAIM            = SD + "oral-claim";
     public static final String CLAIM_RESPONSE        = SD + "claim-response";
     public static final String PRACTITIONER          = SD + "practitioner";
     public static final String PRACTITIONER_ROLE     = SD + "practitioner-role";
@@ -45,8 +47,11 @@ public final class NphiesProfiles {
     public static final String EXT_PATIENT_SHARE    = SD + "extension-patient-share";
     public static final String EXT_PAYER_SHARE      = SD + "extension-payer-share";
     public static final String EXT_PACKAGE          = SD + "extension-package";
-    public static final String EXT_EPISODE          = SD + "extension-episode";
-    public static final String EXT_PATIENT_INVOICE  = SD + "extension-patientInvoice";
+    public static final String EXT_EPISODE                      = SD + "extension-episode";
+    public static final String EXT_PATIENT_INVOICE              = SD + "extension-patientInvoice";
+    public static final String EXT_ELIGIBILITY_OFFLINE_REF      = SD + "extension-eligibility-offline-reference";
+    public static final String EXT_ELIGIBILITY_OFFLINE_DATE     = SD + "extension-eligibility-offline-date";
+    public static final String EXT_ADJUDICATION_OUTCOME         = SD + "extension-adjudication-outcome";
 
     // ── Identifier systems — license numbers ─────────────────────────────────
     /** CCHI-issued provider license number */
@@ -102,6 +107,12 @@ public final class NphiesProfiles {
     public static final String CS_SITE_ELIGIBILITY   = CS + "siteEligibility";
 
     // ── Terminology code systems — standard HL7 ──────────────────────────────
+    /** Coverage class type codes (plan, group, subgroup, …) */
+    public static final String CS_COVERAGE_CLASS =
+            "http://terminology.hl7.org/CodeSystem/coverage-class";
+    /** Adjudication outcome codes (pended, approved, partial, denied, …) */
+    public static final String CS_ADJUDICATION_OUTCOME = CS + "adjudication-outcome";
+
     public static final String CS_ELIGIBILITY_PURPOSE =
             "http://hl7.org/fhir/eligibilityrequest-purpose";
     public static final String CS_RELATIONSHIP =

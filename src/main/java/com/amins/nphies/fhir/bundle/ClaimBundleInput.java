@@ -21,9 +21,11 @@ public class ClaimBundleInput {
     @Builder.Default String priority = "normal";
     @Builder.Default String payeeTypeCode = "provider";
 
-    // Claim-level episode extension (optional)
+    // Claim-level extensions (optional)
     String episodeSystem;
     String episodeValue;
+    String eligibilityOfflineReference;
+    LocalDate eligibilityOfflineDate;
 
     // Patient
     @NonNull String patientNationalId;
@@ -41,6 +43,10 @@ public class ClaimBundleInput {
     @Builder.Default String coverageTypeDisplay = "extended healthcare";
     LocalDate coveragePeriodStart;
     LocalDate coveragePeriodEnd;
+
+    // Coverage class (optional, e.g. "plan" with plan code value)
+    String coverageClassCode;
+    String coverageClassValue;
 
     // Payer
     @NonNull String payerLicenseNo;
@@ -93,13 +99,17 @@ public class ClaimBundleInput {
         @NonNull String productCode;
         String productSystem;
         String productDisplay;
+        List<AdditionalCoding> additionalProductCodings;
         LocalDate servicedDate;
         LocalDate servicedPeriodStart;
         LocalDate servicedPeriodEnd;
         @Builder.Default BigDecimal qty = BigDecimal.ONE;
         @NonNull BigDecimal unitPrice;
         @NonNull BigDecimal net;
+        BigDecimal factor;
         String bodySite;
+        String bodySiteSystem;
+        String bodySiteDisplay;
         String[] modifiers;
         BigDecimal taxAmount;
         BigDecimal patientShareAmount;
@@ -117,6 +127,7 @@ public class ClaimBundleInput {
         @NonNull String productCode;
         @NonNull String productSystem;
         String productDisplay;
+        List<AdditionalCoding> additionalProductCodings;
         @Builder.Default BigDecimal quantity = BigDecimal.ONE;
         @NonNull BigDecimal unitPrice;
         @Builder.Default BigDecimal factor = BigDecimal.ONE;
@@ -128,12 +139,23 @@ public class ClaimBundleInput {
 
     @Value
     @Builder
+    public static class AdditionalCoding {
+        @NonNull String system;
+        @NonNull String code;
+        String display;
+    }
+
+    @Value
+    @Builder
     public static class SupportingInfoEntry {
         int sequence;
         @NonNull String categoryCode;
         BigDecimal quantityValue;
         String quantityUnit;
         LocalDate timingDate;
+        LocalDate timingPeriodStart;
+        LocalDate timingPeriodEnd;
+        String valueString;
         String attachmentContentType;
         String attachmentTitle;
         String attachmentData;
