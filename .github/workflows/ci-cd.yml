@@ -153,7 +153,7 @@ jobs:
           username: ${{ secrets.UAT_SSH_USER }}
           key: ${{ secrets.UAT_SSH_KEY }}
           source: docker-compose.yml
-          target: /opt/claim-management
+          target: ~/claim-management
 
       - name: Write .env and deploy on UAT server
         uses: appleboy/ssh-action@v1.0.3
@@ -173,7 +173,7 @@ jobs:
           envs: DB_PASSWORD,JWT_SECRET,NPHIES_MASTER_KEY_BASE64,BOOTSTRAP_ADMIN_PASSWORD,TRACARE_INTERNAL_API_KEY,REPO_OWNER,GH_ACTOR,GH_TOKEN
           script: |
             set -e
-            cd /opt/claim-management
+            cd ~/claim-management
             echo "DB_PASSWORD=${DB_PASSWORD}" > .env
             echo "JWT_SECRET=${JWT_SECRET}" >> .env
             echo "NPHIES_MASTER_KEY_BASE64=${NPHIES_MASTER_KEY_BASE64}" >> .env
@@ -207,7 +207,7 @@ jobs:
           username: ${{ secrets.PROD_SSH_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           source: docker-compose.yml
-          target: /opt/claim-management
+          target: ~/claim-management
 
       - name: Write .env and deploy on Prod server
         uses: appleboy/ssh-action@v1.0.3
@@ -227,7 +227,7 @@ jobs:
           envs: DB_PASSWORD,JWT_SECRET,NPHIES_MASTER_KEY_BASE64,BOOTSTRAP_ADMIN_PASSWORD,TRACARE_INTERNAL_API_KEY,REPO_OWNER,GH_ACTOR,GH_TOKEN
           script: |
             set -e
-            cd /opt/claim-management
+            cd ~/claim-management
             echo "DB_PASSWORD=${DB_PASSWORD}" > .env
             echo "JWT_SECRET=${JWT_SECRET}" >> .env
             echo "NPHIES_MASTER_KEY_BASE64=${NPHIES_MASTER_KEY_BASE64}" >> .env
