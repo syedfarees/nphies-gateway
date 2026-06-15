@@ -3,6 +3,7 @@ package com.amins.nphies.config.multitenant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
+import org.hibernate.service.UnknownUnwrapTypeException;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -62,10 +63,10 @@ public class SchemaTenantConnectionProvider implements MultiTenantConnectionProv
     @Override
     @SuppressWarnings("unchecked")
     public <T> T unwrap(Class<T> unwrapType) {
-        if (MultiTenantConnectionProvider.class.isAssignableFrom(unwrapType)) {
+        if (isUnwrappableAs(unwrapType)) {
             return (T) this;
         }
-        throw new IllegalArgumentException("Cannot unwrap to type: " + unwrapType);
+        throw new UnknownUnwrapTypeException(unwrapType);
     }
 
     /** Rejects schema names that contain anything other than letters, digits, and underscores. */

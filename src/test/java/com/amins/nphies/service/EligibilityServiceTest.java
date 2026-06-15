@@ -7,7 +7,9 @@ import com.amins.nphies.fhir.bundle.EligibilityRequestInput;
 import com.amins.nphies.fhir.response.CoverageEligibilityResponseMapper;
 import com.amins.nphies.fhir.response.EligibilityResponse;
 import com.amins.nphies.gateway.NphiesGatewayClient;
+import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.repository.TenantNphiesConfigRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -39,23 +41,30 @@ class EligibilityServiceTest {
     private static final String BUNDLE_JSON      = "{\"resourceType\":\"Bundle\"}";
     private static final String RESPONSE_JSON    = "{\"resourceType\":\"Bundle\",\"type\":\"message\"}";
 
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
+
     // ── Happy path ────────────────────────────────────────────────────────────
 
     @Test
     void checkEligibility_happyPath_returnsResponse() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
         EligibilityResponse expected = completeResponse();
         when(responseMapper.map(any(), any())).thenReturn(expected);
 
-        EligibilityResponse result = eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        EligibilityResponse result = eligibilityService.checkEligibility(minimalRequest().build());
 
         assertThat(result).isSameAs(expected);
     }
 
     @Test
     void checkEligibility_happyPath_returnsExpectedOutcome() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -65,7 +74,7 @@ class EligibilityServiceTest {
                 .benefits(List.of())
                 .build());
 
-        EligibilityResponse result = eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        EligibilityResponse result = eligibilityService.checkEligibility(minimalRequest().build());
 
         assertThat(result.getOutcome()).isEqualTo(EligibilityResponse.EligibilityOutcome.COMPLETE);
     }
@@ -74,20 +83,22 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_noActiveConfig_throwsNphiesException() {
+        TenantContext.set(TENANT_ID);
         when(configRepository.findByTenantIdAndActiveTrue(TENANT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
-                eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build()))
+                eligibilityService.checkEligibility(minimalRequest().build()))
                 .isInstanceOf(NphiesException.class)
                 .hasMessageContaining(TENANT_ID);
     }
 
     @Test
     void checkEligibility_noActiveConfig_gatewayNeverCalled() {
+        TenantContext.set(TENANT_ID);
         when(configRepository.findByTenantIdAndActiveTrue(TENANT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
-                eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build()));
+                eligibilityService.checkEligibility(minimalRequest().build()));
         verifyNoInteractions(gatewayClient);
     }
 
@@ -95,6 +106,7 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_providerLicenseFromConfig() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -102,7 +114,7 @@ class EligibilityServiceTest {
 
         ArgumentCaptor<EligibilityRequestInput> captor =
                 ArgumentCaptor.forClass(EligibilityRequestInput.class);
-        eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        eligibilityService.checkEligibility(minimalRequest().build());
 
         verify(bundleBuilder).build(captor.capture());
         assertThat(captor.getValue().getProviderLicenseNumber()).isEqualTo(PROVIDER_LICENSE);
@@ -110,6 +122,7 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_providerNameIsTenantId() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -117,7 +130,7 @@ class EligibilityServiceTest {
 
         ArgumentCaptor<EligibilityRequestInput> captor =
                 ArgumentCaptor.forClass(EligibilityRequestInput.class);
-        eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        eligibilityService.checkEligibility(minimalRequest().build());
 
         verify(bundleBuilder).build(captor.capture());
         assertThat(captor.getValue().getProviderName()).isEqualTo(TENANT_ID);
@@ -127,6 +140,7 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_payerFieldsPassedThrough() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -139,7 +153,7 @@ class EligibilityServiceTest {
 
         ArgumentCaptor<EligibilityRequestInput> captor =
                 ArgumentCaptor.forClass(EligibilityRequestInput.class);
-        eligibilityService.checkEligibility(TENANT_ID, req);
+        eligibilityService.checkEligibility(req);
 
         verify(bundleBuilder).build(captor.capture());
         assertThat(captor.getValue().getPayerLicenseNumber()).isEqualTo("INS-9999");
@@ -148,6 +162,7 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_patientFieldsPassedThrough() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -163,7 +178,7 @@ class EligibilityServiceTest {
 
         ArgumentCaptor<EligibilityRequestInput> captor =
                 ArgumentCaptor.forClass(EligibilityRequestInput.class);
-        eligibilityService.checkEligibility(TENANT_ID, req);
+        eligibilityService.checkEligibility(req);
 
         verify(bundleBuilder).build(captor.capture());
         assertThat(captor.getValue().getPatientNationalId()).isEqualTo("1987654321");
@@ -175,36 +190,39 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_calledWithApiBaseUrl() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
-        eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        eligibilityService.checkEligibility(minimalRequest().build());
 
         verify(gatewayClient).submitBundle(eq(TENANT_ID), eq(API_BASE_URL), any());
     }
 
     @Test
     void checkEligibility_responsePassedToMapper() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
-        eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        eligibilityService.checkEligibility(minimalRequest().build());
 
         verify(responseMapper).map(any(), eq(RESPONSE_JSON));
     }
 
     @Test
     void checkEligibility_requestIdPassedToMapper() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
-        eligibilityService.checkEligibility(TENANT_ID, minimalRequest().requestId("specific-req-id").build());
+        eligibilityService.checkEligibility(minimalRequest().requestId("specific-req-id").build());
 
         verify(responseMapper).map(eq("specific-req-id"), any());
     }
@@ -213,35 +231,38 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_nonRetryableException_propagates() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any()))
                 .thenThrow(new NphiesException.NonRetryable("bad request"));
 
         assertThatThrownBy(() ->
-                eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build()))
+                eligibilityService.checkEligibility(minimalRequest().build()))
                 .isInstanceOf(NphiesException.NonRetryable.class);
     }
 
     @Test
     void checkEligibility_retryableException_propagates() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any()))
                 .thenThrow(new NphiesException.Retryable("server error"));
 
         assertThatThrownBy(() ->
-                eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build()))
+                eligibilityService.checkEligibility(minimalRequest().build()))
                 .isInstanceOf(NphiesException.Retryable.class);
     }
 
     @Test
     void checkEligibility_illegalArgFromBuilder_propagates() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenThrow(new IllegalArgumentException("bad gender"));
 
         assertThatThrownBy(() ->
-                eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build()))
+                eligibilityService.checkEligibility(minimalRequest().build()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -249,6 +270,7 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_mapperReturnsPending_serviceReturnsPending() {
+        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn("");
@@ -258,7 +280,7 @@ class EligibilityServiceTest {
                 .benefits(List.of())
                 .build());
 
-        EligibilityResponse result = eligibilityService.checkEligibility(TENANT_ID, minimalRequest().build());
+        EligibilityResponse result = eligibilityService.checkEligibility(minimalRequest().build());
 
         assertThat(result.getOutcome()).isEqualTo(EligibilityResponse.EligibilityOutcome.PENDING);
     }
