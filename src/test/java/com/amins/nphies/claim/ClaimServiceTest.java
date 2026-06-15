@@ -13,10 +13,13 @@ import com.amins.nphies.exception.NphiesException;
 import com.amins.nphies.fhir.bundle.ClaimBundleBuilder;
 import com.amins.nphies.fhir.response.ClaimResponseMapper;
 import com.amins.nphies.gateway.NphiesGatewayClient;
+import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.organization.Organization;
 import com.amins.nphies.organization.OrganizationRepository;
 import com.amins.nphies.practitioner.PractitionerRepository;
 import com.amins.nphies.repository.TenantNphiesConfigRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -59,6 +62,16 @@ class ClaimServiceTest {
     private static final String BUNDLE_JSON  = "{\"resourceType\":\"Bundle\"}";
     private static final String RESPONSE_JSON = "{\"resourceType\":\"Bundle\",\"id\":\"resp-bundle-1\"}";
 
+    @BeforeEach
+    void setTenantContext() {
+        TenantContext.set(TENANT_ID);
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
+
     // ── Happy path ─────────────────────────────────────────────────────────────
 
     @Test
@@ -79,7 +92,7 @@ class ClaimServiceTest {
         when(claimResponseMapper.map(any(), any())).thenReturn(responseDto);
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        ClaimSummaryResponse result = claimService.submitClaim(TENANT_ID, minimalRequest());
+        ClaimSummaryResponse result = claimService.submitClaim(minimalRequest());
 
         assertThat(result.getSubmissionStatus()).isEqualTo(Claim.SubmissionStatus.SUBMITTED);
         verify(claimRepository, atLeast(2)).save(any());
@@ -103,7 +116,7 @@ class ClaimServiceTest {
         when(claimResponseMapper.map(any(), any())).thenReturn(responseDto);
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        claimService.submitClaim(TENANT_ID, minimalRequest());
+        claimService.submitClaim(minimalRequest());
 
         // Verify that a claim was saved with nphiesBundleId set
         verify(claimRepository, atLeast(2)).save(argThat(c -> "resp-bundle-1".equals(c.getNphiesBundleId())));
@@ -123,7 +136,7 @@ class ClaimServiceTest {
                 .thenThrow(new NphiesException.Retryable("gateway down"));
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        ClaimSummaryResponse result = claimService.submitClaim(TENANT_ID, minimalRequest());
+        ClaimSummaryResponse result = claimService.submitClaim(minimalRequest());
 
         assertThat(result.getSubmissionStatus()).isEqualTo(Claim.SubmissionStatus.ERROR);
     }
@@ -140,7 +153,7 @@ class ClaimServiceTest {
                 .thenThrow(new RuntimeException("timeout"));
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        claimService.submitClaim(TENANT_ID, minimalRequest());
+        claimService.submitClaim(minimalRequest());
 
         verify(claimResponseRepository).save(argThat(r -> "error".equals(r.getOutcome())));
     }
@@ -151,7 +164,7 @@ class ClaimServiceTest {
     void submitClaim_tenantNotFound_throwsNphiesException() {
         when(configRepository.findByTenantIdAndActiveTrue(TENANT_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> claimService.submitClaim(TENANT_ID, minimalRequest()))
+        assertThatThrownBy(() -> claimService.submitClaim(minimalRequest()))
                 .isInstanceOf(NphiesException.class)
                 .hasMessageContaining(TENANT_ID);
     }
@@ -159,10 +172,10 @@ class ClaimServiceTest {
     @Test
     void submitClaim_beneficiaryNotFound_throws404() {
         stubConfig();
-        when(beneficiaryRepository.findByIdAndTenantIdAndActiveTrue(any(), any()))
+        when(beneficiaryRepository.findByIdAndActiveTrue(any()))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> claimService.submitClaim(TENANT_ID, minimalRequest()))
+        assertThatThrownBy(() -> claimService.submitClaim(minimalRequest()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Beneficiary not found");
     }
@@ -171,9 +184,9 @@ class ClaimServiceTest {
 
     @Test
     void getClaimDetail_notFound_throws404() {
-        when(claimRepository.findByClaimIdAndTenantId(any(), any())).thenReturn(Optional.empty());
+        when(claimRepository.findByClaimId(any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> claimService.getClaimDetail(TENANT_ID, "unknown-claim"))
+        assertThatThrownBy(() -> claimService.getClaimDetail("unknown-claim"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Claim not found");
     }
@@ -184,12 +197,11 @@ class ClaimServiceTest {
     void pollClaimResponse_noBundleId_throws400() {
         Claim claim = new Claim();
         claim.setClaimId("claim-1");
-        claim.setTenantId(TENANT_ID);
         claim.setNphiesBundleId(null);
-        when(claimRepository.findByClaimIdAndTenantId("claim-1", TENANT_ID))
+        when(claimRepository.findByClaimId("claim-1"))
                 .thenReturn(Optional.of(claim));
 
-        assertThatThrownBy(() -> claimService.pollClaimResponse(TENANT_ID, "claim-1"))
+        assertThatThrownBy(() -> claimService.pollClaimResponse("claim-1"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("no NPHIES bundle ID");
     }
@@ -199,9 +211,8 @@ class ClaimServiceTest {
         Claim claim = new Claim();
         claim.setId(1L);
         claim.setClaimId("claim-1");
-        claim.setTenantId(TENANT_ID);
         claim.setNphiesBundleId("bundle-xyz");
-        when(claimRepository.findByClaimIdAndTenantId("claim-1", TENANT_ID))
+        when(claimRepository.findByClaimId("claim-1"))
                 .thenReturn(Optional.of(claim));
         stubConfig();
         when(gatewayClient.pollBundleResponse(any(), any(), eq("bundle-xyz")))
@@ -215,7 +226,7 @@ class ClaimServiceTest {
         when(claimResponseMapper.map(eq("claim-1"), any())).thenReturn(expected);
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        ClaimResponseDto result = claimService.pollClaimResponse(TENANT_ID, "claim-1");
+        ClaimResponseDto result = claimService.pollClaimResponse("claim-1");
 
         assertThat(result).isSameAs(expected);
     }
@@ -246,7 +257,7 @@ class ClaimServiceTest {
         b.setMemberId("MEM-001");
         b.setPayerLicenseNo("INS-0000001");
         b.setPayerName("Test Insurance Co");
-        when(beneficiaryRepository.findByIdAndTenantIdAndActiveTrue(any(), any()))
+        when(beneficiaryRepository.findByIdAndActiveTrue(any()))
                 .thenReturn(Optional.of(b));
     }
 
@@ -257,7 +268,7 @@ class ClaimServiceTest {
         c.setPayerLicenseNo("INS-0000001");
         c.setPayerName("Test Insurance Co");
         c.setCoverageRelationship("self");
-        when(coverageRepository.findByIdAndTenantIdAndActiveTrue(any(), any()))
+        when(coverageRepository.findByIdAndActiveTrue(any()))
                 .thenReturn(Optional.of(c));
     }
 
@@ -266,7 +277,7 @@ class ClaimServiceTest {
         org.setId(30L);
         org.setLicenseNo("INS-0000001");
         org.setName("Test Insurance Co");
-        when(organizationRepository.findByIdAndTenantIdAndActiveTrue(any(), any()))
+        when(organizationRepository.findByIdAndActiveTrue(any()))
                 .thenReturn(Optional.of(org));
     }
 
