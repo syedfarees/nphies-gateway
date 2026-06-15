@@ -46,6 +46,7 @@ services:
       GCP_SECRET_MANAGER_ENABLED: ${GCP_SECRET_MANAGER_ENABLED:-false}
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      APP_CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost}
     networks:
       - internal
     # Port NOT exposed externally — nginx is the only ingress
