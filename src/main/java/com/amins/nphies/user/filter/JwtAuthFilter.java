@@ -34,13 +34,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
                 if (jwtService.isValid(token)) {
-                    // tenantId embedded in JWT — set schema context BEFORE loading user
                     String tenantId = jwtService.extractTenantId(token);
-                    if (tenantId != null && !tenantId.isBlank()) {
-                        TenantContext.set(tenantId);
-                    }
                     String email = jwtService.extractEmail(token);
-                    if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    // Both claims must be present — tokens without tid (pre-multi-tenancy)
+                    // are treated as unauthenticated to avoid querying the wrong schema.
+                    if (tenantId != null && !tenantId.isBlank()
+                            && email != null
+                            && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        TenantContext.set(tenantId);
                         UserDetails userDetails = userService.loadUserByUsername(email);
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
