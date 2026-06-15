@@ -54,6 +54,20 @@ public class SchemaTenantConnectionProvider implements MultiTenantConnectionProv
         return false;
     }
 
+    @Override
+    public boolean isUnwrappableAs(Class<?> unwrapType) {
+        return MultiTenantConnectionProvider.class.isAssignableFrom(unwrapType);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T unwrap(Class<T> unwrapType) {
+        if (MultiTenantConnectionProvider.class.isAssignableFrom(unwrapType)) {
+            return (T) this;
+        }
+        throw new IllegalArgumentException("Cannot unwrap to type: " + unwrapType);
+    }
+
     /** Rejects schema names that contain anything other than letters, digits, and underscores. */
     private static String sanitize(String schema) {
         if (!schema.matches("[a-zA-Z0-9_]+")) {
