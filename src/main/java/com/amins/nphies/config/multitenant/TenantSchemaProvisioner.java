@@ -88,8 +88,7 @@ public class TenantSchemaProvisioner {
 
     /** Builds a JDBC URL for a specific schema, reusing the base URL. */
     private String buildUrl(String schema) {
-        // Strip trailing /? and any existing database name, then append schema
-        String base = jdbcUrl.replaceAll("/[^/?]*(?=[?]|$)", "/");
+        String base = jdbcUrl.replaceAll("(jdbc:[^:]+://[^/]+/).*", "$1");
         return base + schema + "?connectionTimeZone=UTC";
     }
 }
