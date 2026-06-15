@@ -74,7 +74,8 @@ public class SystemSchemaInitializer {
     }
 
     private String buildNoSchemaUrl() {
-        // Remove everything from the last '/' before '?' or end of string
-        return jdbcUrl.replaceAll("/[^/?]*(?=[?]|$)", "/");
+        // Extract jdbc:protocol://host:port/ stripping any existing database name and query params.
+        // Handles both jdbc:mysql://host:port/dbname?params and jdbc:mysql://host:port/?params.
+        return jdbcUrl.replaceAll("(jdbc:[^:]+://[^/]+/).*", "$1");
     }
 }
