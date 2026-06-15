@@ -3,17 +3,17 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export const SIDEBAR_COLLAPSED = 72
-export const SIDEBAR_EXPANDED  = 200
+export const SIDEBAR_EXPANDED  = 220
 
 const NAV_ITEMS = [
-  { to: '/dashboard',     label: 'Dashboard',     icon: HomeIcon },
-  { to: '/eligibility',   label: 'Eligibility',   icon: EligibilityIcon },
-  { to: '/authorization', label: 'Authorization', icon: AuthIcon },
-  { to: '/claim',         label: 'Claim',         icon: ClaimIcon },
-  { to: '/practitioners', label: 'Practitioners', icon: PractitionersIcon },
-  { to: '/organizations', label: 'Insurers',      icon: OrganizationsIcon },
-  { to: '/invite-user',        label: 'Invite User',       icon: InviteIcon,   adminOnly: true },
-  { to: '/register-hospital',  label: 'Register Hospital', icon: HospitalIcon, adminOnly: true },
+  { to: '/dashboard',        label: 'Dashboard',        icon: HomeIcon },
+  { to: '/eligibility',      label: 'Eligibility',      icon: EligibilityIcon },
+  { to: '/authorization',    label: 'Authorization',    icon: AuthIcon },
+  { to: '/claim',            label: 'Claim',            icon: ClaimIcon },
+  { to: '/practitioners',    label: 'Practitioners',    icon: PractitionersIcon },
+  { to: '/organizations',    label: 'Insurers',         icon: OrganizationsIcon },
+  { to: '/invite-user',      label: 'Invite User',      icon: InviteIcon,   adminOnly: true },
+  { to: '/register-hospital',label: 'Register Hospital',icon: HospitalIcon, adminOnly: true },
 ]
 
 export default function Sidebar() {
@@ -43,12 +43,22 @@ export default function Sidebar() {
       }}
     >
       {/* ── Brand ── */}
-      <div style={{ padding: '0 0 28px 14px', flexShrink: 0 }}>
+      <div
+        style={{
+          padding:        '0 0 28px 0',
+          flexShrink:     0,
+          display:        'flex',
+          alignItems:     'center',
+          justifyContent: expanded ? 'flex-start' : 'center',
+          paddingLeft:    expanded ? '16px' : '0',
+          transition:     'padding-left 220ms ease, justify-content 220ms ease',
+        }}
+      >
         <span
-          className="text-white font-bold leading-snug"
+          className="text-white font-bold"
           style={{ fontSize: '13px', whiteSpace: 'nowrap' }}
         >
-          TraCare<br />Claim
+          {expanded ? 'TraCare Claim' : 'TC'}
         </span>
       </div>
 
@@ -58,8 +68,8 @@ export default function Sidebar() {
           flex:          1,
           display:       'flex',
           flexDirection: 'column',
-          alignItems:    'center',
-          gap:           '10px',
+          alignItems:    'stretch',
+          gap:           '4px',
           padding:       '0 10px',
         }}
       >
@@ -75,19 +85,20 @@ export default function Sidebar() {
                 style={{
                   display:         'flex',
                   alignItems:      'center',
-                  gap:             '12px',
+                  justifyContent:  expanded ? 'flex-start' : 'center',
+                  gap:             '10px',
                   width:           '100%',
-                  padding:         expanded ? '8px 10px' : '0',
-                  borderRadius:    expanded ? '12px' : '0',
-                  backgroundColor: expanded && isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                  padding:         '6px',
+                  borderRadius:    '12px',
+                  backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
                   transition:      'background 150ms',
                 }}
               >
-                {/* Circle icon button */}
+                {/* Circle icon */}
                 <div
                   style={{
-                    width:           '44px',
-                    height:          '44px',
+                    width:           '40px',
+                    height:          '40px',
                     borderRadius:    '50%',
                     backgroundColor: isActive ? '#fff' : 'rgba(255,255,255,0.18)',
                     display:         'flex',
@@ -101,21 +112,21 @@ export default function Sidebar() {
                   <Icon />
                 </div>
 
-                {/* Label — only when expanded */}
-                {expanded && (
-                  <span
-                    style={{
-                      color:      isActive ? '#fff' : 'rgba(255,255,255,0.85)',
-                      fontWeight: isActive ? 600 : 400,
-                      fontSize:   '13px',
-                      whiteSpace: 'nowrap',
-                      opacity:    expanded ? 1 : 0,
-                      transition: 'opacity 120ms ease 80ms',
-                    }}
-                  >
-                    {label}
-                  </span>
-                )}
+                {/* Label — always in DOM, fades with width */}
+                <span
+                  style={{
+                    color:      isActive ? '#fff' : 'rgba(255,255,255,0.85)',
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize:   '13px',
+                    whiteSpace: 'nowrap',
+                    overflow:   'hidden',
+                    maxWidth:   expanded ? '160px' : '0',
+                    opacity:    expanded ? 1 : 0,
+                    transition: 'max-width 220ms ease, opacity 180ms ease',
+                  }}
+                >
+                  {label}
+                </span>
               </div>
             )}
           </NavLink>
@@ -147,7 +158,7 @@ export default function Sidebar() {
           }}
         />
 
-        {/* Logout icon inside the bubble area */}
+        {/* Logout */}
         <button
           onClick={() => { logout(); navigate('/login') }}
           title="Logout"
