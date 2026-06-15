@@ -22,8 +22,8 @@ spring:
         timezone:
           default_storage: NORMALIZE
         multiTenancy: SCHEMA
-        tenant_identifier_resolver: com.amins.nphies.config.multitenant.TenantSchemaResolver
-        multi_tenant_connection_provider: com.amins.nphies.config.multitenant.SchemaTenantConnectionProvider
+        # Resolver and connection-provider are wired as Spring beans in HibernateMultiTenancyConfig
+        # to avoid Hibernate using Class.newInstance() which bypasses Spring DI.
   flyway:
     enabled: false               # Flyway is managed manually (system + per-tenant)
   mail:
