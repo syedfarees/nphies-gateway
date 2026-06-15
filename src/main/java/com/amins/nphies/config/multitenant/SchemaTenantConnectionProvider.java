@@ -68,9 +68,9 @@ public class SchemaTenantConnectionProvider implements MultiTenantConnectionProv
         throw new IllegalArgumentException("Cannot unwrap to type: " + unwrapType);
     }
 
-    /** Rejects schema names that contain anything other than letters, digits, and underscores. */
+    /** Rejects schema names that contain anything other than letters, digits, underscores, and hyphens. */
     private static String sanitize(String schema) {
-        if (!schema.matches("[a-zA-Z0-9_]+")) {
+        if (!schema.matches("[a-zA-Z0-9_-]+")) {
             throw new IllegalArgumentException("Invalid schema name: " + schema);
         }
         return schema;
