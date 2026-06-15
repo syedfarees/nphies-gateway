@@ -16,7 +16,7 @@ public class TenantSchemaResolver implements CurrentTenantIdentifierResolver<Str
 
     @Override
     public String resolveCurrentTenantIdentifier() {
-        String tenantId = TenantContext.get();
+        String tenantId = TenantContext.getOrNull();
         return tenantId != null ? "nphies_" + tenantId : SYSTEM_SCHEMA;
     }
 
