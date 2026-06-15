@@ -19,39 +19,40 @@ public class CoverageController {
 
     @GetMapping
     public List<CoverageResponse> listAll() {
-        return service.listAll(TenantContext.require());
+        TenantContext.require();
+        return service.listAll();
     }
 
     @GetMapping("/{id}")
-    public CoverageResponse getById(
-            @PathVariable Long id) {
-        return service.getById(TenantContext.require(), id);
+    public CoverageResponse getById(@PathVariable Long id) {
+        TenantContext.require();
+        return service.getById(id);
     }
 
     @GetMapping("/beneficiary/{beneficiaryId}")
-    public List<CoverageResponse> listByBeneficiary(
-            @PathVariable Long beneficiaryId) {
-        return service.listByBeneficiary(TenantContext.require(), beneficiaryId);
+    public List<CoverageResponse> listByBeneficiary(@PathVariable Long beneficiaryId) {
+        TenantContext.require();
+        return service.listByBeneficiary(beneficiaryId);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CoverageResponse create(
-            @Valid @RequestBody CoverageRequest request) {
-        return service.create(TenantContext.require(), request);
+    public CoverageResponse create(@Valid @RequestBody CoverageRequest request) {
+        TenantContext.require();
+        return service.create(request);
     }
 
     @PutMapping("/{id}")
-    public CoverageResponse update(
-            @PathVariable Long id,
-            @Valid @RequestBody CoverageRequest request) {
-        return service.update(TenantContext.require(), id, request);
+    public CoverageResponse update(@PathVariable Long id,
+                                    @Valid @RequestBody CoverageRequest request) {
+        TenantContext.require();
+        return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @PathVariable Long id) {
-        service.delete(TenantContext.require(), id);
+    public void delete(@PathVariable Long id) {
+        TenantContext.require();
+        service.delete(id);
     }
 }

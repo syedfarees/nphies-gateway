@@ -7,6 +7,7 @@ import com.amins.nphies.fhir.bundle.EligibilityRequestInput;
 import com.amins.nphies.fhir.response.CoverageEligibilityResponseMapper;
 import com.amins.nphies.fhir.response.EligibilityResponse;
 import com.amins.nphies.gateway.NphiesGatewayClient;
+import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.repository.TenantNphiesConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +33,8 @@ public class EligibilityService {
     private final NphiesGatewayClient                 gatewayClient;
     private final CoverageEligibilityResponseMapper   responseMapper;
 
-    public EligibilityResponse checkEligibility(String tenantId, EligibilityCheckRequest request) {
+    public EligibilityResponse checkEligibility(EligibilityCheckRequest request) {
+        String tenantId = TenantContext.require();
         log.info("Checking eligibility for tenant: {} requestId: {}", tenantId, request.getRequestId());
 
         TenantNphiesConfig config = configRepository

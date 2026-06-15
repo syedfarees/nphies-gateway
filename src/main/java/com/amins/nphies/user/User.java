@@ -34,9 +34,6 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 50)
     private String role = "USER";
 
-    @Column(name = "tenant_id", length = 100)
-    private String tenantId;
-
     @Column(nullable = false)
     private boolean active = true;
 

@@ -28,13 +28,12 @@ public class UserService implements UserDetailsService {
         if (userRepository.existsByEmailIgnoreCase(req.getEmail())) {
             throw new IllegalArgumentException("Email already registered");
         }
-        // Tenant and role come from the admin-issued invitation, never the client
+        // Role comes from the admin-issued invitation, never the client
         UserInvitation invitation = invitationService.redeem(req.getEmail(), req.getOtp());
         User user = new User();
         user.setName(req.getName());
         user.setEmail(req.getEmail().toLowerCase());
         user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
-        user.setTenantId(invitation.getTenantId());
         user.setRole(invitation.getRole());
         return userRepository.save(user);
     }

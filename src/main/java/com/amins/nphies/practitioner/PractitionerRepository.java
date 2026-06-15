@@ -7,11 +7,11 @@ import java.util.Optional;
 
 public interface PractitionerRepository extends JpaRepository<Practitioner, Long> {
 
-    List<Practitioner> findAllByTenantIdAndActiveTrue(String tenantId);
+    List<Practitioner> findAllByActiveTrue();
 
-    Optional<Practitioner> findByIdAndTenantIdAndActiveTrue(Long id, String tenantId);
+    Optional<Practitioner> findByIdAndActiveTrue(Long id);
 
-    Optional<Practitioner> findByTenantIdAndPractitionerLicense(String tenantId, String practitionerLicense);
+    Optional<Practitioner> findByPractitionerLicense(String practitionerLicense);
 
-    boolean existsByTenantIdAndPractitionerLicenseAndIdNot(String tenantId, String practitionerLicense, Long id);
+    boolean existsByPractitionerLicenseAndIdNot(String practitionerLicense, Long id);
 }

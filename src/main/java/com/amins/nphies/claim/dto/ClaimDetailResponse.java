@@ -13,7 +13,6 @@ public class ClaimDetailResponse {
 
     private final Long id;
     private final String claimId;
-    private final String tenantId;
     private final Claim.UseType useType;
     private final Claim.ClaimType claimType;
     private final String priority;
@@ -42,7 +41,6 @@ public class ClaimDetailResponse {
                                ClaimResponseDto latestResponse) {
         this.id = c.getId();
         this.claimId = c.getClaimId();
-        this.tenantId = c.getTenantId();
         this.useType = c.getUseType();
         this.claimType = c.getClaimType();
         this.priority = c.getPriority();

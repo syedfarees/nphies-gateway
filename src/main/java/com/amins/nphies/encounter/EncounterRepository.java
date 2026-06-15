@@ -7,9 +7,9 @@ import java.util.Optional;
 
 public interface EncounterRepository extends JpaRepository<Encounter, Long> {
 
-    List<Encounter> findAllByTenantIdAndActiveTrue(String tenantId);
+    List<Encounter> findAllByActiveTrue();
 
-    Optional<Encounter> findByIdAndTenantIdAndActiveTrue(Long id, String tenantId);
+    Optional<Encounter> findByIdAndActiveTrue(Long id);
 
-    List<Encounter> findAllByBeneficiaryIdAndTenantIdAndActiveTrue(Long beneficiaryId, String tenantId);
+    List<Encounter> findAllByBeneficiaryIdAndActiveTrue(Long beneficiaryId);
 }

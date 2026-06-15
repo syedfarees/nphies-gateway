@@ -8,7 +8,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const [form, setForm] = useState({ email: '', password: '', remember: false })
+  const [form, setForm] = useState({ tenantId: '', email: '', password: '', remember: false })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const data = await apiLogin(form.email, form.password)
+      const data = await apiLogin(form.email, form.password, form.tenantId)
       login(data, form.remember)
       navigate('/dashboard')
     } catch (err) {
@@ -55,6 +55,21 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Tenant ID */}
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Hospital / Clinic ID</label>
+            <input
+              type="text"
+              name="tenantId"
+              value={form.tenantId}
+              onChange={handleChange}
+              placeholder="e.g. HOSPITAL-001"
+              required
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+              style={{ '--tw-ring-color': '#2BB5A0' }}
+            />
+          </div>
+
           {/* Email */}
           <div>
             <label className="block text-sm text-gray-600 mb-1">Email</label>

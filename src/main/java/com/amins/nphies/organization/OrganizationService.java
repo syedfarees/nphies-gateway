@@ -17,56 +17,53 @@ public class OrganizationService {
     private final OrganizationRepository repository;
 
     @Transactional(readOnly = true)
-    public List<OrganizationResponse> listAll(String tenantId) {
-        return repository.findAllByTenantIdAndActiveTrue(tenantId)
+    public List<OrganizationResponse> listAll() {
+        return repository.findAllByActiveTrue()
                 .stream()
                 .map(OrganizationResponse::new)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public OrganizationResponse getById(String tenantId, Long id) {
-        return repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public OrganizationResponse getById(Long id) {
+        return repository.findByIdAndActiveTrue(id)
                 .map(OrganizationResponse::new)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found"));
     }
 
     @Transactional
-    public OrganizationResponse create(String tenantId, OrganizationRequest req) {
-        repository.findByTenantIdAndLicenseNo(tenantId, req.getLicenseNo())
+    public OrganizationResponse create(OrganizationRequest req) {
+        repository.findByLicenseNo(req.getLicenseNo())
                 .ifPresent(existing -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Organization with license " + req.getLicenseNo() + " already exists for this tenant");
+                            "Organization with license " + req.getLicenseNo() + " already exists");
                 });
-
-        Organization o = mapToEntity(new Organization(), tenantId, req);
-        return new OrganizationResponse(repository.save(o));
+        return new OrganizationResponse(repository.save(mapToEntity(new Organization(), req)));
     }
 
     @Transactional
-    public OrganizationResponse update(String tenantId, Long id, OrganizationRequest req) {
-        Organization o = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public OrganizationResponse update(Long id, OrganizationRequest req) {
+        Organization o = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found"));
 
         if (!o.getLicenseNo().equals(req.getLicenseNo()) &&
-                repository.existsByTenantIdAndLicenseNoAndIdNot(tenantId, req.getLicenseNo(), id)) {
+                repository.existsByLicenseNoAndIdNot(req.getLicenseNo(), id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Another organization with license " + req.getLicenseNo() + " already exists");
         }
 
-        return new OrganizationResponse(repository.save(mapToEntity(o, tenantId, req)));
+        return new OrganizationResponse(repository.save(mapToEntity(o, req)));
     }
 
     @Transactional
-    public void delete(String tenantId, Long id) {
-        Organization o = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public void delete(Long id) {
+        Organization o = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found"));
         o.setActive(false);
         repository.save(o);
     }
 
-    private Organization mapToEntity(Organization o, String tenantId, OrganizationRequest req) {
-        o.setTenantId(tenantId);
+    private Organization mapToEntity(Organization o, OrganizationRequest req) {
         o.setLicenseNo(req.getLicenseNo());
         o.setOrgType(req.getOrgType() != null ? req.getOrgType() : Organization.OrgType.INSURER);
         o.setName(req.getName());

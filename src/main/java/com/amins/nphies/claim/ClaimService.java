@@ -13,6 +13,7 @@ import com.amins.nphies.fhir.bundle.ClaimBundleBuilder;
 import com.amins.nphies.fhir.bundle.ClaimBundleInput;
 import com.amins.nphies.fhir.response.ClaimResponseMapper;
 import com.amins.nphies.gateway.NphiesGatewayClient;
+import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.organization.Organization;
 import com.amins.nphies.organization.OrganizationRepository;
 import com.amins.nphies.practitioner.Practitioner;
@@ -51,25 +52,25 @@ public class ClaimService {
     private final ClaimResponseMapper claimResponseMapper;
 
     @Transactional
-    public ClaimSummaryResponse submitClaim(String tenantId, ClaimRequest req) {
+    public ClaimSummaryResponse submitClaim(ClaimRequest req) {
+        String tenantId = TenantContext.require();
         log.info("Submitting claim for tenant: {}", tenantId);
 
         TenantNphiesConfig config = configRepository.findByTenantIdAndActiveTrue(tenantId)
                 .orElseThrow(() -> new NphiesException("No active NPHIES configuration for tenant: " + tenantId));
 
-        Beneficiary beneficiary = beneficiaryRepository.findByIdAndTenantIdAndActiveTrue(req.getBeneficiaryId(), tenantId)
+        Beneficiary beneficiary = beneficiaryRepository.findByIdAndActiveTrue(req.getBeneficiaryId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found"));
 
-        Coverage coverage = coverageRepository.findByIdAndTenantIdAndActiveTrue(req.getCoverageId(), tenantId)
+        Coverage coverage = coverageRepository.findByIdAndActiveTrue(req.getCoverageId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coverage not found"));
 
-        Organization insurerOrg = organizationRepository.findByIdAndTenantIdAndActiveTrue(req.getInsurerOrgId(), tenantId)
+        Organization insurerOrg = organizationRepository.findByIdAndActiveTrue(req.getInsurerOrgId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Insurer organization not found"));
 
         // Persist Claim entity (PENDING status)
         String claimId = UUID.randomUUID().toString();
         Claim claim = new Claim();
-        claim.setTenantId(tenantId);
         claim.setClaimId(claimId);
         claim.setUseType(req.getUseType() != null ? req.getUseType() : Claim.UseType.CLAIM);
         claim.setClaimType(req.getClaimType() != null ? req.getClaimType() : Claim.ClaimType.INSTITUTIONAL);
@@ -150,7 +151,7 @@ public class ClaimService {
             claim.setSubmissionStatus(Claim.SubmissionStatus.ERROR);
             claimRepository.save(claim);
             // Persist error response
-            persistClaimResponse(claim, tenantId, null,
+            persistClaimResponse(claim, null,
                     ClaimResponseDto.builder()
                             .outcome("error")
                             .disposition(e.getMessage())
@@ -165,7 +166,7 @@ public class ClaimService {
         if (responseDto.getBundleId() != null) {
             claim.setNphiesBundleId(responseDto.getBundleId());
         }
-        persistClaimResponse(claim, tenantId, responseJson, responseDto);
+        persistClaimResponse(claim, responseJson, responseDto);
 
         claimRepository.save(claim);
         log.info("Claim submitted successfully for tenant: {}, claimId: {}", tenantId, claimId);
@@ -173,8 +174,8 @@ public class ClaimService {
     }
 
     @Transactional(readOnly = true)
-    public ClaimDetailResponse getClaimDetail(String tenantId, String claimId) {
-        Claim claim = claimRepository.findByClaimIdAndTenantId(claimId, tenantId)
+    public ClaimDetailResponse getClaimDetail(String claimId) {
+        Claim claim = claimRepository.findByClaimId(claimId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Claim not found"));
 
         List<ClaimCareTeam> careTeam = claimCareTeamRepository.findAllByClaimIdOrderBySequence(claim.getId());
@@ -190,16 +191,17 @@ public class ClaimService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClaimSummaryResponse> listClaims(String tenantId, Claim.SubmissionStatus status) {
+    public List<ClaimSummaryResponse> listClaims(Claim.SubmissionStatus status) {
         List<Claim> claims = status != null
-                ? claimRepository.findAllByTenantIdAndSubmissionStatus(tenantId, status)
-                : claimRepository.findAllByTenantId(tenantId);
+                ? claimRepository.findAllBySubmissionStatus(status)
+                : claimRepository.findAll();
         return claims.stream().map(ClaimSummaryResponse::new).toList();
     }
 
     @Transactional
-    public ClaimResponseDto pollClaimResponse(String tenantId, String claimId) {
-        Claim claim = claimRepository.findByClaimIdAndTenantId(claimId, tenantId)
+    public ClaimResponseDto pollClaimResponse(String claimId) {
+        String tenantId = TenantContext.require();
+        Claim claim = claimRepository.findByClaimId(claimId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Claim not found"));
 
         if (claim.getNphiesBundleId() == null || claim.getNphiesBundleId().isBlank()) {
@@ -212,7 +214,7 @@ public class ClaimService {
 
         String responseJson = gatewayClient.pollBundleResponse(tenantId, config.getApiBaseUrl(), claim.getNphiesBundleId());
         ClaimResponseDto responseDto = claimResponseMapper.map(claimId, responseJson);
-        persistClaimResponse(claim, tenantId, responseJson, responseDto);
+        persistClaimResponse(claim, responseJson, responseDto);
 
         return responseDto;
     }
@@ -379,9 +381,8 @@ public class ClaimService {
         return result;
     }
 
-    private void persistClaimResponse(Claim claim, String tenantId, String rawJson, ClaimResponseDto dto) {
+    private void persistClaimResponse(Claim claim, String rawJson, ClaimResponseDto dto) {
         ClaimResponseEntity responseEntity = new ClaimResponseEntity();
-        responseEntity.setTenantId(tenantId);
         responseEntity.setClaimId(claim.getId());
         responseEntity.setOutcome(dto.getOutcome());
         responseEntity.setDisposition(dto.getDisposition());
