@@ -19,6 +19,7 @@ import com.amins.nphies.organization.OrganizationRepository;
 import com.amins.nphies.practitioner.PractitionerRepository;
 import com.amins.nphies.repository.TenantNphiesConfigRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -61,6 +62,11 @@ class ClaimServiceTest {
     private static final String BUNDLE_JSON  = "{\"resourceType\":\"Bundle\"}";
     private static final String RESPONSE_JSON = "{\"resourceType\":\"Bundle\",\"id\":\"resp-bundle-1\"}";
 
+    @BeforeEach
+    void setTenantContext() {
+        TenantContext.set(TENANT_ID);
+    }
+
     @AfterEach
     void clearTenantContext() {
         TenantContext.clear();
@@ -70,7 +76,6 @@ class ClaimServiceTest {
 
     @Test
     void submitClaim_happyPath_returnsSubmittedStatus() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         stubBeneficiary();
         stubCoverage();
@@ -95,7 +100,6 @@ class ClaimServiceTest {
 
     @Test
     void submitClaim_happyPath_nphiesBundleIdIsSet() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         stubBeneficiary();
         stubCoverage();
@@ -114,6 +118,7 @@ class ClaimServiceTest {
 
         claimService.submitClaim(minimalRequest());
 
+        // Verify that a claim was saved with nphiesBundleId set
         verify(claimRepository, atLeast(2)).save(argThat(c -> "resp-bundle-1".equals(c.getNphiesBundleId())));
     }
 
@@ -121,7 +126,6 @@ class ClaimServiceTest {
 
     @Test
     void submitClaim_gatewayThrows_statusIsError() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         stubBeneficiary();
         stubCoverage();
@@ -139,7 +143,6 @@ class ClaimServiceTest {
 
     @Test
     void submitClaim_gatewayThrows_errorResponseIsPersisted() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         stubBeneficiary();
         stubCoverage();
@@ -159,7 +162,6 @@ class ClaimServiceTest {
 
     @Test
     void submitClaim_tenantNotFound_throwsNphiesException() {
-        TenantContext.set(TENANT_ID);
         when(configRepository.findByTenantIdAndActiveTrue(TENANT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> claimService.submitClaim(minimalRequest()))
@@ -169,7 +171,6 @@ class ClaimServiceTest {
 
     @Test
     void submitClaim_beneficiaryNotFound_throws404() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(beneficiaryRepository.findByIdAndActiveTrue(any()))
                 .thenReturn(Optional.empty());
@@ -194,7 +195,6 @@ class ClaimServiceTest {
 
     @Test
     void pollClaimResponse_noBundleId_throws400() {
-        TenantContext.set(TENANT_ID);
         Claim claim = new Claim();
         claim.setClaimId("claim-1");
         claim.setNphiesBundleId(null);
@@ -208,7 +208,6 @@ class ClaimServiceTest {
 
     @Test
     void pollClaimResponse_happyPath_returnsDto() {
-        TenantContext.set(TENANT_ID);
         Claim claim = new Claim();
         claim.setId(1L);
         claim.setClaimId("claim-1");

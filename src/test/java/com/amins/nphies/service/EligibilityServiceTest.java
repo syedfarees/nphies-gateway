@@ -10,6 +10,7 @@ import com.amins.nphies.gateway.NphiesGatewayClient;
 import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.repository.TenantNphiesConfigRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,6 +42,11 @@ class EligibilityServiceTest {
     private static final String BUNDLE_JSON      = "{\"resourceType\":\"Bundle\"}";
     private static final String RESPONSE_JSON    = "{\"resourceType\":\"Bundle\",\"type\":\"message\"}";
 
+    @BeforeEach
+    void setTenantContext() {
+        TenantContext.set(TENANT_ID);
+    }
+
     @AfterEach
     void clearTenantContext() {
         TenantContext.clear();
@@ -50,7 +56,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_happyPath_returnsResponse() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -64,7 +69,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_happyPath_returnsExpectedOutcome() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -83,7 +87,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_noActiveConfig_throwsNphiesException() {
-        TenantContext.set(TENANT_ID);
         when(configRepository.findByTenantIdAndActiveTrue(TENANT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
@@ -94,7 +97,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_noActiveConfig_gatewayNeverCalled() {
-        TenantContext.set(TENANT_ID);
         when(configRepository.findByTenantIdAndActiveTrue(TENANT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
@@ -106,7 +108,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_providerLicenseFromConfig() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -122,7 +123,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_providerNameIsTenantId() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -140,7 +140,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_payerFieldsPassedThrough() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -162,7 +161,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_patientFieldsPassedThrough() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -190,7 +188,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_calledWithApiBaseUrl() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -203,7 +200,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_responsePassedToMapper() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -216,7 +212,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_requestIdPassedToMapper() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
@@ -231,7 +226,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_nonRetryableException_propagates() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any()))
@@ -244,7 +238,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_retryableException_propagates() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any()))
@@ -257,7 +250,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_illegalArgFromBuilder_propagates() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenThrow(new IllegalArgumentException("bad gender"));
 
@@ -270,7 +262,6 @@ class EligibilityServiceTest {
 
     @Test
     void checkEligibility_mapperReturnsPending_serviceReturnsPending() {
-        TenantContext.set(TENANT_ID);
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
         when(gatewayClient.submitBundle(any(), any(), any())).thenReturn("");
