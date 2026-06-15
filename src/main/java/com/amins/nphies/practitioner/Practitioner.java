@@ -22,9 +22,6 @@ public class Practitioner {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, length = 100)
-    private String tenantId;
-
     @Column(name = "practitioner_license", nullable = false, length = 100)
     private String practitionerLicense;
 

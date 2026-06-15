@@ -2,21 +2,19 @@ import { authFetch } from './client'
 
 const DEV_MODE = false
 
-// Mock responses for local development (no backend needed)
 const mockDelay = (ms = 600) => new Promise((r) => setTimeout(r, ms))
 
-export async function apiLogin(email, password) {
+export async function apiLogin(email, password, tenantId) {
   if (DEV_MODE) {
     await mockDelay()
     if (!email || !password) throw new Error('Email and password are required')
-    // Accept any valid-looking credentials in dev
-    return { name: email.split('@')[0], email, token: 'dev-token-123', role: 'ADMIN' }
+    return { name: email.split('@')[0], email, token: 'dev-token-123', role: 'ADMIN', tenantId: tenantId || 'dev' }
   }
 
   const res = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ tenantId, email, password }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -26,7 +24,7 @@ export async function apiLogin(email, password) {
 }
 
 // Emails the registration OTP for a pending invitation (silent if none exists)
-export async function apiSendRegistrationOtp(email) {
+export async function apiSendRegistrationOtp(email, tenantId) {
   if (DEV_MODE) {
     await mockDelay()
     return { success: true }
@@ -35,7 +33,7 @@ export async function apiSendRegistrationOtp(email) {
   const res = await fetch('/api/auth/register/send-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ tenantId, email }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -44,7 +42,7 @@ export async function apiSendRegistrationOtp(email) {
   return res.json()
 }
 
-export async function apiRegister(name, email, password, otp) {
+export async function apiRegister(name, email, password, otp, tenantId) {
   if (DEV_MODE) {
     await mockDelay()
     return { success: true }
@@ -53,7 +51,7 @@ export async function apiRegister(name, email, password, otp) {
   const res = await fetch('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password, otp }),
+    body: JSON.stringify({ tenantId, name, email, password, otp }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -80,7 +78,7 @@ export async function apiInviteUser(email, role) {
   return res.json()
 }
 
-export async function apiForgotPassword(email) {
+export async function apiForgotPassword(email, tenantId) {
   if (DEV_MODE) {
     await mockDelay()
     return { success: true }
@@ -89,7 +87,7 @@ export async function apiForgotPassword(email) {
   const res = await fetch('/api/auth/forgot-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ tenantId, email }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -98,7 +96,7 @@ export async function apiForgotPassword(email) {
   return res.json()
 }
 
-export async function apiResetPassword(email, otp, newPassword) {
+export async function apiResetPassword(email, otp, newPassword, tenantId) {
   if (DEV_MODE) {
     await mockDelay()
     return { success: true }
@@ -107,7 +105,7 @@ export async function apiResetPassword(email, otp, newPassword) {
   const res = await fetch('/api/auth/reset-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, otp, newPassword }),
+    body: JSON.stringify({ tenantId, email, otp, newPassword }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))

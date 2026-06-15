@@ -17,51 +17,49 @@ public class EncounterService {
     private final EncounterRepository repository;
 
     @Transactional(readOnly = true)
-    public List<EncounterResponse> listAll(String tenantId) {
-        return repository.findAllByTenantIdAndActiveTrue(tenantId)
+    public List<EncounterResponse> listAll() {
+        return repository.findAllByActiveTrue()
                 .stream()
                 .map(EncounterResponse::new)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public EncounterResponse getById(String tenantId, Long id) {
-        return repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public EncounterResponse getById(Long id) {
+        return repository.findByIdAndActiveTrue(id)
                 .map(EncounterResponse::new)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Encounter not found"));
     }
 
     @Transactional(readOnly = true)
-    public List<EncounterResponse> listByBeneficiary(String tenantId, Long beneficiaryId) {
-        return repository.findAllByBeneficiaryIdAndTenantIdAndActiveTrue(beneficiaryId, tenantId)
+    public List<EncounterResponse> listByBeneficiary(Long beneficiaryId) {
+        return repository.findAllByBeneficiaryIdAndActiveTrue(beneficiaryId)
                 .stream()
                 .map(EncounterResponse::new)
                 .toList();
     }
 
     @Transactional
-    public EncounterResponse create(String tenantId, EncounterRequest req) {
-        Encounter e = mapToEntity(new Encounter(), tenantId, req);
-        return new EncounterResponse(repository.save(e));
+    public EncounterResponse create(EncounterRequest req) {
+        return new EncounterResponse(repository.save(mapToEntity(new Encounter(), req)));
     }
 
     @Transactional
-    public EncounterResponse update(String tenantId, Long id, EncounterRequest req) {
-        Encounter e = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public EncounterResponse update(Long id, EncounterRequest req) {
+        Encounter e = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Encounter not found"));
-        return new EncounterResponse(repository.save(mapToEntity(e, tenantId, req)));
+        return new EncounterResponse(repository.save(mapToEntity(e, req)));
     }
 
     @Transactional
-    public void delete(String tenantId, Long id) {
-        Encounter e = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public void delete(Long id) {
+        Encounter e = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Encounter not found"));
         e.setActive(false);
         repository.save(e);
     }
 
-    private Encounter mapToEntity(Encounter e, String tenantId, EncounterRequest req) {
-        e.setTenantId(tenantId);
+    private Encounter mapToEntity(Encounter e, EncounterRequest req) {
         e.setBeneficiaryId(req.getBeneficiaryId());
         e.setPractitionerId(req.getPractitionerId());
         e.setEncounterClass(req.getEncounterClass() != null ? req.getEncounterClass() : Encounter.EncounterClass.AMB);

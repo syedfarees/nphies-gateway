@@ -7,11 +7,11 @@ import java.util.Optional;
 
 public interface BeneficiaryRepository extends JpaRepository<Beneficiary, Long> {
 
-    List<Beneficiary> findAllByTenantIdAndActiveTrue(String tenantId);
+    List<Beneficiary> findAllByActiveTrue();
 
-    Optional<Beneficiary> findByIdAndTenantIdAndActiveTrue(Long id, String tenantId);
+    Optional<Beneficiary> findByIdAndActiveTrue(Long id);
 
-    Optional<Beneficiary> findByTenantIdAndNationalId(String tenantId, String nationalId);
+    Optional<Beneficiary> findByNationalId(String nationalId);
 
-    boolean existsByTenantIdAndNationalIdAndIdNot(String tenantId, String nationalId, Long id);
+    boolean existsByNationalIdAndIdNot(String nationalId, Long id);
 }

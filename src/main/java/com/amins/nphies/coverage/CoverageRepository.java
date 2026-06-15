@@ -7,9 +7,9 @@ import java.util.Optional;
 
 public interface CoverageRepository extends JpaRepository<Coverage, Long> {
 
-    List<Coverage> findAllByTenantIdAndActiveTrue(String tenantId);
+    List<Coverage> findAllByActiveTrue();
 
-    Optional<Coverage> findByIdAndTenantIdAndActiveTrue(Long id, String tenantId);
+    Optional<Coverage> findByIdAndActiveTrue(Long id);
 
-    List<Coverage> findAllByBeneficiaryIdAndTenantIdAndActiveTrue(Long beneficiaryId, String tenantId);
+    List<Coverage> findAllByBeneficiaryIdAndActiveTrue(Long beneficiaryId);
 }

@@ -9,7 +9,7 @@ const inputClass =
 export default function RegisterPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState('email') // 'email' | 'details'
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', otp: '' })
+  const [form, setForm] = useState({ tenantId: '', name: '', email: '', password: '', confirm: '', otp: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resent, setResent] = useState(false)
@@ -24,7 +24,7 @@ export default function RegisterPage() {
     setError('')
     setLoading(true)
     try {
-      await apiSendRegistrationOtp(form.email)
+      await apiSendRegistrationOtp(form.email, form.tenantId)
       setStep('details')
     } catch (err) {
       setError(err.message)
@@ -37,7 +37,7 @@ export default function RegisterPage() {
     setError('')
     setResent(false)
     try {
-      await apiSendRegistrationOtp(form.email)
+      await apiSendRegistrationOtp(form.email, form.tenantId)
       setResent(true)
     } catch (err) {
       setError(err.message)
@@ -53,7 +53,7 @@ export default function RegisterPage() {
     }
     setLoading(true)
     try {
-      await apiRegister(form.name, form.email, form.password, form.otp)
+      await apiRegister(form.name, form.email, form.password, form.otp, form.tenantId)
       navigate('/login')
     } catch (err) {
       setError(err.message)
@@ -82,6 +82,19 @@ export default function RegisterPage() {
 
         {step === 'email' ? (
           <form onSubmit={handleSendCode} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Hospital / Clinic ID</label>
+              <input
+                type="text"
+                name="tenantId"
+                value={form.tenantId}
+                onChange={handleChange}
+                placeholder="e.g. HOSPITAL-001"
+                required
+                className={inputClass}
+              />
+            </div>
+
             <div>
               <label className="block text-sm text-gray-600 mb-1">Email</label>
               <input

@@ -17,13 +17,7 @@ import java.time.Instant;
  * One row per tenant (hospital / clinic facility).
  */
 @Entity
-@Table(
-        name = "tenant_nphies_config",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_tenant_provider_license",
-                columnNames = {"tenant_id", "provider_license_no"}
-        )
-)
+@Table(name = "tenant_nphies_config")
 @Getter
 @Setter
 @NoArgsConstructor

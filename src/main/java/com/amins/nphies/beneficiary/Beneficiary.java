@@ -24,9 +24,6 @@ public class Beneficiary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, length = 100)
-    private String tenantId;
-
     @Column(name = "national_id", nullable = false, length = 50)
     private String nationalId;
 

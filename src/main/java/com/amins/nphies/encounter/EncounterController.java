@@ -19,39 +19,40 @@ public class EncounterController {
 
     @GetMapping
     public List<EncounterResponse> listAll() {
-        return service.listAll(TenantContext.require());
+        TenantContext.require();
+        return service.listAll();
     }
 
     @GetMapping("/{id}")
-    public EncounterResponse getById(
-            @PathVariable Long id) {
-        return service.getById(TenantContext.require(), id);
+    public EncounterResponse getById(@PathVariable Long id) {
+        TenantContext.require();
+        return service.getById(id);
     }
 
     @GetMapping("/beneficiary/{beneficiaryId}")
-    public List<EncounterResponse> listByBeneficiary(
-            @PathVariable Long beneficiaryId) {
-        return service.listByBeneficiary(TenantContext.require(), beneficiaryId);
+    public List<EncounterResponse> listByBeneficiary(@PathVariable Long beneficiaryId) {
+        TenantContext.require();
+        return service.listByBeneficiary(beneficiaryId);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EncounterResponse create(
-            @Valid @RequestBody EncounterRequest request) {
-        return service.create(TenantContext.require(), request);
+    public EncounterResponse create(@Valid @RequestBody EncounterRequest request) {
+        TenantContext.require();
+        return service.create(request);
     }
 
     @PutMapping("/{id}")
-    public EncounterResponse update(
-            @PathVariable Long id,
-            @Valid @RequestBody EncounterRequest request) {
-        return service.update(TenantContext.require(), id, request);
+    public EncounterResponse update(@PathVariable Long id,
+                                     @Valid @RequestBody EncounterRequest request) {
+        TenantContext.require();
+        return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @PathVariable Long id) {
-        service.delete(TenantContext.require(), id);
+    public void delete(@PathVariable Long id) {
+        TenantContext.require();
+        service.delete(id);
     }
 }

@@ -9,7 +9,6 @@ import java.time.OffsetDateTime;
 public class PractitionerResponse {
 
     private final Long id;
-    private final String tenantId;
     private final String practitionerLicense;
     private final String firstName;
     private final String familyName;
@@ -20,7 +19,6 @@ public class PractitionerResponse {
 
     public PractitionerResponse(Practitioner p) {
         this.id = p.getId();
-        this.tenantId = p.getTenantId();
         this.practitionerLicense = p.getPractitionerLicense();
         this.firstName = p.getFirstName();
         this.familyName = p.getFamilyName();

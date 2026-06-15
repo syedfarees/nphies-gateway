@@ -10,7 +10,6 @@ import java.time.OffsetDateTime;
 public class BeneficiaryResponse {
 
     private final Long id;
-    private final String tenantId;
     private final String nationalId;
     private final Beneficiary.IdType idType;
     private final String firstName;
@@ -28,7 +27,6 @@ public class BeneficiaryResponse {
 
     public BeneficiaryResponse(Beneficiary b) {
         this.id = b.getId();
-        this.tenantId = b.getTenantId();
         this.nationalId = b.getNationalId();
         this.idType = b.getIdType();
         this.firstName = b.getFirstName();
