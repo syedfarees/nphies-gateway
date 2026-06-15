@@ -55,6 +55,15 @@ export default function AddBeneficiaryPage() {
   const set    = (field) => (e) => setForm((prev)     => ({ ...prev, [field]: e.target.value }))
   const setElig = (field) => (e) => setEligForm((prev) => ({ ...prev, [field]: e.target.value }))
 
+  const validate = () => {
+    if (!form.firstName.trim())   return 'First Name is required'
+    if (!form.familyName.trim())  return 'Family Name is required'
+    if (!form.dateOfBirth)        return 'Date of Birth is required'
+    if (!form.gender)             return 'Gender is required'
+    if (!form.documentId.trim())  return 'Document ID is required'
+    return null
+  }
+
   const toggleSection = (key) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
 
@@ -74,6 +83,8 @@ export default function AddBeneficiaryPage() {
 
   /* ── Add Beneficiary → save + show popup ── */
   const handleAddBeneficiary = async () => {
+    const err = validate()
+    if (err) { setSaveError(err); return }
     setSaving(true)
     setSaveError(null)
     try {
@@ -97,6 +108,8 @@ export default function AddBeneficiaryPage() {
 
   /* ── Add & Apply Eligibility → save + navigate ── */
   const handleAddAndApply = async () => {
+    const err = validate()
+    if (err) { setSaveError(err); return }
     setSaving(true)
     setSaveError(null)
     try {
@@ -163,15 +176,15 @@ export default function AddBeneficiaryPage() {
             onToggle={() => toggleSection('personal')}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-              <Field label="First Name"           value={form.firstName}          onChange={set('firstName')} />
+              <Field label="First Name"           value={form.firstName}          onChange={set('firstName')} required />
               <Field label="Second Name"          value={form.secondName}         onChange={set('secondName')} />
               <Field label="Third Name"           value={form.thirdName}          onChange={set('thirdName')} />
 
-              <Field label="Family Name"          value={form.familyName}         onChange={set('familyName')} />
-              <Field label="Full Name"            value={form.fullName}           onChange={set('fullName')} required />
+              <Field label="Family Name"          value={form.familyName}         onChange={set('familyName')} required />
+              <Field label="Full Name"            value={form.fullName}           onChange={set('fullName')} />
               <Field label="Beneficiary File ID"  value={form.beneficiaryFileId}  onChange={set('beneficiaryFileId')} />
 
-              <Field label="Date of Birth"        value={form.dateOfBirth}        onChange={set('dateOfBirth')} type="date" />
+              <Field label="Date of Birth"        value={form.dateOfBirth}        onChange={set('dateOfBirth')} type="date" required />
               <SelectField label="Gender"         value={form.gender}             onChange={set('gender')} options={GENDERS} required />
               <SelectField label="ID Type"        value={form.idType}             onChange={set('idType')} options={DOC_TYPES} />
 
