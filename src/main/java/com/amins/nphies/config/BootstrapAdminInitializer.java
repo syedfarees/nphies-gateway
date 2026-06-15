@@ -14,9 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Seeds a bootstrap ADMIN and a placeholder NPHIES config on first boot
- * (when the system tenant registry is empty). Runs only once — becomes a
- * no-op once any tenant is registered.
+ * Seeds a bootstrap ADMIN and a placeholder NPHIES config on first boot.
+ * Fully idempotent — each step is guarded independently so partial failures
+ * on previous boots don't leave the system in an inconsistent state.
  *
  * Override defaults via BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD /
  * BOOTSTRAP_TENANT_ID env vars. Change the password after first login.
@@ -55,14 +55,12 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!provisioner.isEmpty()) {
-            return;
+        // Idempotent: provision tenant schema only if not already registered.
+        if (!provisioner.exists(tenantId)) {
+            provisioner.provision(tenantId, "Bootstrap Tenant");
         }
 
-        // Provision the bootstrap tenant schema (creates schema + runs Flyway migrations)
-        provisioner.provision(tenantId, "Bootstrap Tenant");
-
-        // Route all subsequent JPA calls to the bootstrap tenant schema
+        // Route all subsequent JPA calls to the bootstrap tenant schema.
         TenantContext.set(tenantId);
         try {
             if (!configRepository.existsById(tenantId)) {
@@ -79,14 +77,15 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                 log.warn("Bootstrap: created placeholder NPHIES config for tenant '{}' — replace credentials before submitting to NPHIES", tenantId);
             }
 
-            User admin = new User();
-            admin.setName("Bootstrap Admin");
-            admin.setEmail(adminEmail.toLowerCase());
-            admin.setPasswordHash(passwordEncoder.encode(adminPassword));
-            admin.setRole("ADMIN");
-            userRepository.save(admin);
-
-            log.warn("Bootstrap: created ADMIN user '{}' for tenant '{}'. Log in and change this password immediately.", adminEmail, tenantId);
+            if (!userRepository.existsByEmailIgnoreCase(adminEmail)) {
+                User admin = new User();
+                admin.setName("Bootstrap Admin");
+                admin.setEmail(adminEmail.toLowerCase());
+                admin.setPasswordHash(passwordEncoder.encode(adminPassword));
+                admin.setRole("ADMIN");
+                userRepository.save(admin);
+                log.warn("Bootstrap: created ADMIN user '{}' for tenant '{}'. Log in and change this password immediately.", adminEmail, tenantId);
+            }
         } finally {
             TenantContext.clear();
         }
