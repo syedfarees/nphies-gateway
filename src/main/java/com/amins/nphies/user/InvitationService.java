@@ -45,9 +45,6 @@ public class InvitationService {
     private final TransactionTemplate transactionTemplate;
 
     public InviteResponse invite(User inviter, InviteRequest req) {
-        if (inviter.getTenantId() == null || inviter.getTenantId().isBlank()) {
-            throw new IllegalArgumentException("Inviting user has no tenant assigned");
-        }
         String role = req.getRole() == null || req.getRole().isBlank() ? "USER" : req.getRole().toUpperCase();
         if (!ALLOWED_ROLES.contains(role)) {
             throw new IllegalArgumentException("Role must be USER or ADMIN");
@@ -58,7 +55,6 @@ public class InvitationService {
 
         String otp = generateOtp();
         UserInvitation invitation = new UserInvitation();
-        invitation.setTenantId(inviter.getTenantId());
         invitation.setEmail(req.getEmail().toLowerCase());
         invitation.setRole(role);
         invitation.setOtpHash(passwordEncoder.encode(otp));

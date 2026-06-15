@@ -10,7 +10,6 @@ import java.time.OffsetDateTime;
 public class CoverageResponse {
 
     private final Long id;
-    private final String tenantId;
     private final Long beneficiaryId;
     private final String memberId;
     private final String subscriberId;
@@ -28,7 +27,6 @@ public class CoverageResponse {
 
     public CoverageResponse(Coverage c) {
         this.id = c.getId();
-        this.tenantId = c.getTenantId();
         this.beneficiaryId = c.getBeneficiaryId();
         this.memberId = c.getMemberId();
         this.subscriberId = c.getSubscriberId();

@@ -22,19 +22,20 @@ public class BeneficiaryController {
 
     @GetMapping
     public List<BeneficiaryResponse> listAll() {
-        return service.listAll(TenantContext.require());
+        TenantContext.require();
+        return service.listAll();
     }
 
     @GetMapping("/{id}")
-    public BeneficiaryResponse getById(
-            @PathVariable Long id) {
-        return service.getById(TenantContext.require(), id);
+    public BeneficiaryResponse getById(@PathVariable Long id) {
+        TenantContext.require();
+        return service.getById(id);
     }
 
     @GetMapping("/search")
-    public BeneficiaryResponse searchByNationalId(
-            @RequestParam String nationalId) {
-        return service.getByNationalId(TenantContext.require(), nationalId);
+    public BeneficiaryResponse searchByNationalId(@RequestParam String nationalId) {
+        TenantContext.require();
+        return service.getByNationalId(nationalId);
     }
 
     @GetMapping("/tracare-lookup")
@@ -46,27 +47,28 @@ public class BeneficiaryController {
 
     @PostMapping("/upsert")
     public BeneficiaryResponse upsert(@Valid @RequestBody BeneficiaryRequest request) {
-        return service.upsert(TenantContext.require(), request);
+        TenantContext.require();
+        return service.upsert(request);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BeneficiaryResponse create(
-            @Valid @RequestBody BeneficiaryRequest request) {
-        return service.create(TenantContext.require(), request);
+    public BeneficiaryResponse create(@Valid @RequestBody BeneficiaryRequest request) {
+        TenantContext.require();
+        return service.create(request);
     }
 
     @PutMapping("/{id}")
-    public BeneficiaryResponse update(
-            @PathVariable Long id,
-            @Valid @RequestBody BeneficiaryRequest request) {
-        return service.update(TenantContext.require(), id, request);
+    public BeneficiaryResponse update(@PathVariable Long id,
+                                       @Valid @RequestBody BeneficiaryRequest request) {
+        TenantContext.require();
+        return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @PathVariable Long id) {
-        service.delete(TenantContext.require(), id);
+    public void delete(@PathVariable Long id) {
+        TenantContext.require();
+        service.delete(id);
     }
 }

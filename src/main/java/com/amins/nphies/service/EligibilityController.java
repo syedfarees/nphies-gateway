@@ -20,9 +20,9 @@ public class EligibilityController {
 
     @PostMapping("/check")
     public EligibilityResponse check(@Valid @RequestBody EligibilityCheckApiRequest req) {
-        String tenantId = TenantContext.require();
+        TenantContext.require();
 
-        BeneficiaryResponse b = beneficiaryService.getById(tenantId, req.getBeneficiaryId());
+        BeneficiaryResponse b = beneficiaryService.getById(req.getBeneficiaryId());
 
         // Resolve payer fields: request overrides stored beneficiary value
         String memberId      = coalesce(req.getMemberId(),       b.getMemberId());
@@ -43,7 +43,7 @@ public class EligibilityController {
                 .servicedDate(req.getServicedDate())
                 .build();
 
-        return eligibilityService.checkEligibility(tenantId, checkRequest);
+        return eligibilityService.checkEligibility(checkRequest);
     }
 
     private static String coalesce(String override, String fallback) {

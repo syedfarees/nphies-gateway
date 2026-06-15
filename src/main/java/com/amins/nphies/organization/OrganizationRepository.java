@@ -7,11 +7,11 @@ import java.util.Optional;
 
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
 
-    List<Organization> findAllByTenantIdAndActiveTrue(String tenantId);
+    List<Organization> findAllByActiveTrue();
 
-    Optional<Organization> findByIdAndTenantIdAndActiveTrue(Long id, String tenantId);
+    Optional<Organization> findByIdAndActiveTrue(Long id);
 
-    Optional<Organization> findByTenantIdAndLicenseNo(String tenantId, String licenseNo);
+    Optional<Organization> findByLicenseNo(String licenseNo);
 
-    boolean existsByTenantIdAndLicenseNoAndIdNot(String tenantId, String licenseNo, Long id);
+    boolean existsByLicenseNoAndIdNot(String licenseNo, Long id);
 }

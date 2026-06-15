@@ -21,26 +21,27 @@ public class ClaimController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ClaimSummaryResponse submitClaim(
-            @Valid @RequestBody ClaimRequest request) {
-        return service.submitClaim(TenantContext.require(), request);
+    public ClaimSummaryResponse submitClaim(@Valid @RequestBody ClaimRequest request) {
+        TenantContext.require();
+        return service.submitClaim(request);
     }
 
     @GetMapping
     public List<ClaimSummaryResponse> listClaims(
             @RequestParam(required = false) Claim.SubmissionStatus status) {
-        return service.listClaims(TenantContext.require(), status);
+        TenantContext.require();
+        return service.listClaims(status);
     }
 
     @GetMapping("/{claimId}")
-    public ClaimDetailResponse getClaimDetail(
-            @PathVariable String claimId) {
-        return service.getClaimDetail(TenantContext.require(), claimId);
+    public ClaimDetailResponse getClaimDetail(@PathVariable String claimId) {
+        TenantContext.require();
+        return service.getClaimDetail(claimId);
     }
 
     @PostMapping("/{claimId}/poll")
-    public ClaimResponseDto pollClaimResponse(
-            @PathVariable String claimId) {
-        return service.pollClaimResponse(TenantContext.require(), claimId);
+    public ClaimResponseDto pollClaimResponse(@PathVariable String claimId) {
+        TenantContext.require();
+        return service.pollClaimResponse(claimId);
     }
 }

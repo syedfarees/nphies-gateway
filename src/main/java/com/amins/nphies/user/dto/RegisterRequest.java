@@ -8,11 +8,13 @@ import lombok.Data;
 @Data
 public class RegisterRequest {
     @NotBlank
+    private String tenantId;
+    @NotBlank
     private String name;
     @Email @NotBlank
     private String email;
     @NotBlank @Size(min = 8)
     private String password;
     @NotBlank
-    private String otp; // invitation code issued by a tenant admin
+    private String otp;
 }

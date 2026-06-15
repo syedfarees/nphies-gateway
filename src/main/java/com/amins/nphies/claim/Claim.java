@@ -24,9 +24,6 @@ public class Claim {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, length = 100)
-    private String tenantId;
-
     @Column(name = "claim_id", nullable = false, unique = true, length = 100)
     private String claimId;
 

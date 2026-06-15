@@ -9,6 +9,7 @@ const inputClass =
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState('request') // 'request' | 'reset'
+  const [tenantId, setTenantId] = useState('')
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [password, setPassword] = useState('')
@@ -21,7 +22,7 @@ export default function ForgotPasswordPage() {
     setError('')
     setLoading(true)
     try {
-      await apiForgotPassword(email)
+      await apiForgotPassword(email, tenantId)
       setStep('reset')
     } catch (err) {
       setError(err.message)
@@ -39,7 +40,7 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true)
     try {
-      await apiResetPassword(email, otp, password)
+      await apiResetPassword(email, otp, password, tenantId)
       navigate('/login', { state: { passwordReset: true } })
     } catch (err) {
       setError(err.message)
@@ -68,6 +69,18 @@ export default function ForgotPasswordPage() {
 
         {step === 'request' ? (
           <form onSubmit={handleRequest} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Hospital / Clinic ID</label>
+              <input
+                type="text"
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
+                placeholder="e.g. HOSPITAL-001"
+                required
+                className={inputClass}
+              />
+            </div>
+
             <div>
               <label className="block text-sm text-gray-600 mb-1">Email</label>
               <input

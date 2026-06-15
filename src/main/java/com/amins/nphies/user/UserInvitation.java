@@ -18,9 +18,6 @@ public class UserInvitation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, length = 100)
-    private String tenantId;
-
     @Column(nullable = false, length = 255)
     private String email;
 

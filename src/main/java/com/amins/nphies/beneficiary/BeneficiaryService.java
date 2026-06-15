@@ -17,71 +17,67 @@ public class BeneficiaryService {
     private final BeneficiaryRepository repository;
 
     @Transactional(readOnly = true)
-    public List<BeneficiaryResponse> listAll(String tenantId) {
-        return repository.findAllByTenantIdAndActiveTrue(tenantId)
+    public List<BeneficiaryResponse> listAll() {
+        return repository.findAllByActiveTrue()
                 .stream()
                 .map(BeneficiaryResponse::new)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public BeneficiaryResponse getById(String tenantId, Long id) {
-        return repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public BeneficiaryResponse getById(Long id) {
+        return repository.findByIdAndActiveTrue(id)
                 .map(BeneficiaryResponse::new)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found"));
     }
 
     @Transactional(readOnly = true)
-    public BeneficiaryResponse getByNationalId(String tenantId, String nationalId) {
-        return repository.findByTenantIdAndNationalId(tenantId, nationalId)
+    public BeneficiaryResponse getByNationalId(String nationalId) {
+        return repository.findByNationalId(nationalId)
                 .filter(Beneficiary::isActive)
                 .map(BeneficiaryResponse::new)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found"));
     }
 
     @Transactional
-    public BeneficiaryResponse create(String tenantId, BeneficiaryRequest req) {
-        repository.findByTenantIdAndNationalId(tenantId, req.getNationalId()).ifPresent(existing -> {
+    public BeneficiaryResponse create(BeneficiaryRequest req) {
+        repository.findByNationalId(req.getNationalId()).ifPresent(existing -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Beneficiary with national ID " + req.getNationalId() + " already exists for this tenant");
+                    "Beneficiary with national ID " + req.getNationalId() + " already exists");
         });
-
-        Beneficiary b = mapToEntity(new Beneficiary(), tenantId, req);
-        return new BeneficiaryResponse(repository.save(b));
+        return new BeneficiaryResponse(repository.save(mapToEntity(new Beneficiary(), req)));
     }
 
     @Transactional
-    public BeneficiaryResponse update(String tenantId, Long id, BeneficiaryRequest req) {
-        Beneficiary b = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public BeneficiaryResponse update(Long id, BeneficiaryRequest req) {
+        Beneficiary b = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found"));
 
         if (!b.getNationalId().equals(req.getNationalId()) &&
-                repository.existsByTenantIdAndNationalIdAndIdNot(tenantId, req.getNationalId(), id)) {
+                repository.existsByNationalIdAndIdNot(req.getNationalId(), id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Another beneficiary with national ID " + req.getNationalId() + " already exists");
         }
 
-        return new BeneficiaryResponse(repository.save(mapToEntity(b, tenantId, req)));
-    }
-
-    /** Create the beneficiary if it doesn't exist yet; return existing record if nationalId already registered. */
-    @Transactional
-    public BeneficiaryResponse upsert(String tenantId, BeneficiaryRequest req) {
-        return repository.findByTenantIdAndNationalId(tenantId, req.getNationalId())
-                .map(existing -> new BeneficiaryResponse(repository.save(mapToEntity(existing, tenantId, req))))
-                .orElseGet(() -> new BeneficiaryResponse(repository.save(mapToEntity(new Beneficiary(), tenantId, req))));
+        return new BeneficiaryResponse(repository.save(mapToEntity(b, req)));
     }
 
     @Transactional
-    public void delete(String tenantId, Long id) {
-        Beneficiary b = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public BeneficiaryResponse upsert(BeneficiaryRequest req) {
+        return repository.findByNationalId(req.getNationalId())
+                .map(existing -> new BeneficiaryResponse(repository.save(mapToEntity(existing, req))))
+                .orElseGet(() -> new BeneficiaryResponse(repository.save(mapToEntity(new Beneficiary(), req))));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Beneficiary b = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found"));
         b.setActive(false);
         repository.save(b);
     }
 
-    private Beneficiary mapToEntity(Beneficiary b, String tenantId, BeneficiaryRequest req) {
-        b.setTenantId(tenantId);
+    private Beneficiary mapToEntity(Beneficiary b, BeneficiaryRequest req) {
         b.setNationalId(req.getNationalId());
         b.setIdType(req.getIdType() != null ? req.getIdType() : Beneficiary.IdType.NATIONAL_ID);
         b.setFirstName(req.getFirstName());

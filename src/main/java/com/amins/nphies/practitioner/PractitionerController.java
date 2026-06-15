@@ -19,33 +19,34 @@ public class PractitionerController {
 
     @GetMapping
     public List<PractitionerResponse> listAll() {
-        return service.listAll(TenantContext.require());
+        TenantContext.require();
+        return service.listAll();
     }
 
     @GetMapping("/{id}")
-    public PractitionerResponse getById(
-            @PathVariable Long id) {
-        return service.getById(TenantContext.require(), id);
+    public PractitionerResponse getById(@PathVariable Long id) {
+        TenantContext.require();
+        return service.getById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PractitionerResponse create(
-            @Valid @RequestBody PractitionerRequest request) {
-        return service.create(TenantContext.require(), request);
+    public PractitionerResponse create(@Valid @RequestBody PractitionerRequest request) {
+        TenantContext.require();
+        return service.create(request);
     }
 
     @PutMapping("/{id}")
-    public PractitionerResponse update(
-            @PathVariable Long id,
-            @Valid @RequestBody PractitionerRequest request) {
-        return service.update(TenantContext.require(), id, request);
+    public PractitionerResponse update(@PathVariable Long id,
+                                        @Valid @RequestBody PractitionerRequest request) {
+        TenantContext.require();
+        return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @PathVariable Long id) {
-        service.delete(TenantContext.require(), id);
+    public void delete(@PathVariable Long id) {
+        TenantContext.require();
+        service.delete(id);
     }
 }

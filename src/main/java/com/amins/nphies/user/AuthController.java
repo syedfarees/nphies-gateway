@@ -1,5 +1,6 @@
 package com.amins.nphies.user;
 
+import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
+        TenantContext.set(req.getTenantId());
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
@@ -30,8 +32,8 @@ public class AuthController {
             return ResponseEntity.status(401).body("{\"message\":\"Invalid credentials\"}");
         }
         User user = userService.findByEmail(req.getEmail());
-        String token = jwtService.generateToken(user.getEmail());
-        return ResponseEntity.ok(new AuthResponse(user.getName(), user.getEmail(), token, user.getRole(), user.getTenantId()));
+        String token = jwtService.generateToken(user.getEmail(), req.getTenantId());
+        return ResponseEntity.ok(new AuthResponse(user.getName(), user.getEmail(), token, user.getRole(), req.getTenantId()));
     }
 
     /**
@@ -40,12 +42,14 @@ public class AuthController {
      */
     @PostMapping("/register/send-otp")
     public ResponseEntity<RegisterResponse> sendRegistrationOtp(@Valid @RequestBody SendOtpRequest req) {
+        TenantContext.set(req.getTenantId());
         invitationService.resendOtp(req.getEmail());
         return ResponseEntity.ok(new RegisterResponse(true));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
+        TenantContext.set(req.getTenantId());
         try {
             userService.register(req);
         } catch (IllegalArgumentException e) {
@@ -68,12 +72,14 @@ public class AuthController {
     /** Always returns success — never reveals whether the email has an account. */
     @PostMapping("/forgot-password")
     public ResponseEntity<RegisterResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        TenantContext.set(req.getTenantId());
         passwordResetService.requestReset(req.getEmail());
         return ResponseEntity.ok(new RegisterResponse(true));
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        TenantContext.set(req.getTenantId());
         try {
             passwordResetService.resetPassword(req);
         } catch (IllegalArgumentException e) {

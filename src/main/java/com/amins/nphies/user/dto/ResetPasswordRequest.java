@@ -7,6 +7,8 @@ import lombok.Data;
 
 @Data
 public class ResetPasswordRequest {
+    @NotBlank
+    private String tenantId;
     @Email @NotBlank
     private String email;
     @NotBlank

@@ -13,6 +13,8 @@ import java.util.Date;
 @Service
 public class JwtService {
 
+    private static final String CLAIM_TENANT = "tid";
+
     private final SecretKey signingKey;
     private final long expirationMs;
 
@@ -23,10 +25,11 @@ public class JwtService {
         this.expirationMs = expirationMs;
     }
 
-    public String generateToken(String email) {
+    public String generateToken(String email, String tenantId) {
         long now = System.currentTimeMillis();
         return Jwts.builder()
                 .subject(email)
+                .claim(CLAIM_TENANT, tenantId)
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + expirationMs))
                 .signWith(signingKey)
@@ -35,6 +38,10 @@ public class JwtService {
 
     public String extractEmail(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public String extractTenantId(String token) {
+        return parseClaims(token).get(CLAIM_TENANT, String.class);
     }
 
     public boolean isValid(String token) {

@@ -9,7 +9,6 @@ import java.time.OffsetDateTime;
 public class EncounterResponse {
 
     private final Long id;
-    private final String tenantId;
     private final Long beneficiaryId;
     private final Long practitionerId;
     private final Encounter.EncounterClass encounterClass;
@@ -26,7 +25,6 @@ public class EncounterResponse {
 
     public EncounterResponse(Encounter e) {
         this.id = e.getId();
-        this.tenantId = e.getTenantId();
         this.beneficiaryId = e.getBeneficiaryId();
         this.practitionerId = e.getPractitionerId();
         this.encounterClass = e.getEncounterClass();

@@ -17,51 +17,49 @@ public class CoverageService {
     private final CoverageRepository repository;
 
     @Transactional(readOnly = true)
-    public List<CoverageResponse> listAll(String tenantId) {
-        return repository.findAllByTenantIdAndActiveTrue(tenantId)
+    public List<CoverageResponse> listAll() {
+        return repository.findAllByActiveTrue()
                 .stream()
                 .map(CoverageResponse::new)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public CoverageResponse getById(String tenantId, Long id) {
-        return repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public CoverageResponse getById(Long id) {
+        return repository.findByIdAndActiveTrue(id)
                 .map(CoverageResponse::new)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coverage not found"));
     }
 
     @Transactional(readOnly = true)
-    public List<CoverageResponse> listByBeneficiary(String tenantId, Long beneficiaryId) {
-        return repository.findAllByBeneficiaryIdAndTenantIdAndActiveTrue(beneficiaryId, tenantId)
+    public List<CoverageResponse> listByBeneficiary(Long beneficiaryId) {
+        return repository.findAllByBeneficiaryIdAndActiveTrue(beneficiaryId)
                 .stream()
                 .map(CoverageResponse::new)
                 .toList();
     }
 
     @Transactional
-    public CoverageResponse create(String tenantId, CoverageRequest req) {
-        Coverage c = mapToEntity(new Coverage(), tenantId, req);
-        return new CoverageResponse(repository.save(c));
+    public CoverageResponse create(CoverageRequest req) {
+        return new CoverageResponse(repository.save(mapToEntity(new Coverage(), req)));
     }
 
     @Transactional
-    public CoverageResponse update(String tenantId, Long id, CoverageRequest req) {
-        Coverage c = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public CoverageResponse update(Long id, CoverageRequest req) {
+        Coverage c = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coverage not found"));
-        return new CoverageResponse(repository.save(mapToEntity(c, tenantId, req)));
+        return new CoverageResponse(repository.save(mapToEntity(c, req)));
     }
 
     @Transactional
-    public void delete(String tenantId, Long id) {
-        Coverage c = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public void delete(Long id) {
+        Coverage c = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coverage not found"));
         c.setActive(false);
         repository.save(c);
     }
 
-    private Coverage mapToEntity(Coverage c, String tenantId, CoverageRequest req) {
-        c.setTenantId(tenantId);
+    private Coverage mapToEntity(Coverage c, CoverageRequest req) {
         c.setBeneficiaryId(req.getBeneficiaryId());
         c.setMemberId(req.getMemberId());
         c.setSubscriberId(req.getSubscriberId());

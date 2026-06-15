@@ -22,9 +22,6 @@ public class Organization {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, length = 100)
-    private String tenantId;
-
     @Column(name = "license_no", nullable = false, length = 100)
     private String licenseNo;
 

@@ -9,7 +9,6 @@ import java.time.OffsetDateTime;
 public class OrganizationResponse {
 
     private final Long id;
-    private final String tenantId;
     private final String licenseNo;
     private final Organization.OrgType orgType;
     private final String name;
@@ -18,7 +17,6 @@ public class OrganizationResponse {
 
     public OrganizationResponse(Organization o) {
         this.id = o.getId();
-        this.tenantId = o.getTenantId();
         this.licenseNo = o.getLicenseNo();
         this.orgType = o.getOrgType();
         this.name = o.getName();

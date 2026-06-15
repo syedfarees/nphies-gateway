@@ -17,56 +17,53 @@ public class PractitionerService {
     private final PractitionerRepository repository;
 
     @Transactional(readOnly = true)
-    public List<PractitionerResponse> listAll(String tenantId) {
-        return repository.findAllByTenantIdAndActiveTrue(tenantId)
+    public List<PractitionerResponse> listAll() {
+        return repository.findAllByActiveTrue()
                 .stream()
                 .map(PractitionerResponse::new)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public PractitionerResponse getById(String tenantId, Long id) {
-        return repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public PractitionerResponse getById(Long id) {
+        return repository.findByIdAndActiveTrue(id)
                 .map(PractitionerResponse::new)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Practitioner not found"));
     }
 
     @Transactional
-    public PractitionerResponse create(String tenantId, PractitionerRequest req) {
-        repository.findByTenantIdAndPractitionerLicense(tenantId, req.getPractitionerLicense())
+    public PractitionerResponse create(PractitionerRequest req) {
+        repository.findByPractitionerLicense(req.getPractitionerLicense())
                 .ifPresent(existing -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Practitioner with license " + req.getPractitionerLicense() + " already exists for this tenant");
+                            "Practitioner with license " + req.getPractitionerLicense() + " already exists");
                 });
-
-        Practitioner p = mapToEntity(new Practitioner(), tenantId, req);
-        return new PractitionerResponse(repository.save(p));
+        return new PractitionerResponse(repository.save(mapToEntity(new Practitioner(), req)));
     }
 
     @Transactional
-    public PractitionerResponse update(String tenantId, Long id, PractitionerRequest req) {
-        Practitioner p = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public PractitionerResponse update(Long id, PractitionerRequest req) {
+        Practitioner p = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Practitioner not found"));
 
         if (!p.getPractitionerLicense().equals(req.getPractitionerLicense()) &&
-                repository.existsByTenantIdAndPractitionerLicenseAndIdNot(tenantId, req.getPractitionerLicense(), id)) {
+                repository.existsByPractitionerLicenseAndIdNot(req.getPractitionerLicense(), id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Another practitioner with license " + req.getPractitionerLicense() + " already exists");
         }
 
-        return new PractitionerResponse(repository.save(mapToEntity(p, tenantId, req)));
+        return new PractitionerResponse(repository.save(mapToEntity(p, req)));
     }
 
     @Transactional
-    public void delete(String tenantId, Long id) {
-        Practitioner p = repository.findByIdAndTenantIdAndActiveTrue(id, tenantId)
+    public void delete(Long id) {
+        Practitioner p = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Practitioner not found"));
         p.setActive(false);
         repository.save(p);
     }
 
-    private Practitioner mapToEntity(Practitioner p, String tenantId, PractitionerRequest req) {
-        p.setTenantId(tenantId);
+    private Practitioner mapToEntity(Practitioner p, PractitionerRequest req) {
         p.setPractitionerLicense(req.getPractitionerLicense());
         p.setFirstName(req.getFirstName());
         p.setFamilyName(req.getFamilyName());
