@@ -1,6 +1,7 @@
 package com.amins.nphies.config;
 
 import com.amins.nphies.config.multitenant.TenantSchemaProvisioner;
+import com.amins.nphies.gateway.NphiesEndpoints;
 import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.repository.TenantNphiesConfigRepository;
 import com.amins.nphies.security.AesEncryptionService;
@@ -68,9 +69,11 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                         .tenantId(tenantId)
                         .clientId("CHANGE-ME")
                         .clientSecretEncrypted(aesEncryptionService.encrypt("CHANGE-ME"))
-                        .providerLicenseNo("PR-0000-00000")
-                        .tokenEndpoint("https://sso.nphies.sa/auth/realms/sehati/protocol/openid-connect/token")
+                        .providerLicenseNo("PR-FHIR")
+                        .tokenEndpoint(NphiesEndpoints.UAT_TOKEN_URL)
                         .apiBaseUrl("https://HSB.nphies.sa/r4")
+                        .bundleSubmitUrl("http://176.105.150.83/$process-message")
+                        .skipTokenAuth(true)
                         .environment(TenantNphiesConfig.NphiesEnvironment.UAT)
                         .build();
                 configRepository.save(config);

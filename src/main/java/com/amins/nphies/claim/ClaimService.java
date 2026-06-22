@@ -143,7 +143,7 @@ public class ClaimService {
         // Submit to NPHIES
         String responseJson;
         try {
-            responseJson = gatewayClient.submitBundle(tenantId, config.getApiBaseUrl(), bundleJson);
+            responseJson = gatewayClient.submitBundle(tenantId, config.getApiBaseUrl(), config.getBundleSubmitUrl(), config.isSkipTokenAuth(), bundleJson);
             claim.setSubmissionStatus(Claim.SubmissionStatus.SUBMITTED);
             claim.setSubmittedAt(OffsetDateTime.now());
         } catch (Exception e) {

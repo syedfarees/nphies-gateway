@@ -61,12 +61,15 @@ public class NphiesGatewayClient {
      * @param bundleJson   serialized FHIR Bundle JSON string
      * @return NPHIES response body as String (parse with HAPI FHIR in service layer)
      */
-    public String submitBundle(String tenantId, String apiBaseUrl, String bundleJson) {
+    public String submitBundle(String tenantId, String apiBaseUrl, String bundleSubmitUrl,
+                               boolean skipTokenAuth, String bundleJson) {
         log.info("Submitting FHIR Bundle to NPHIES for tenant: {}", tenantId);
 
-        return executeWithResilience(tenantId, () ->
-                executePost(tenantId, apiBaseUrl + NphiesEndpoints.BUNDLE_ENDPOINT, bundleJson)
-        );
+        String submitUrl = (bundleSubmitUrl != null && !bundleSubmitUrl.isBlank())
+                ? bundleSubmitUrl
+                : apiBaseUrl + NphiesEndpoints.BUNDLE_ENDPOINT;
+
+        return executeWithResilience(tenantId, () -> executePost(tenantId, submitUrl, skipTokenAuth, bundleJson));
     }
 
     /**
@@ -87,13 +90,16 @@ public class NphiesGatewayClient {
 
     // ── Core HTTP Execution ──────────────────────────────────────────────────
 
-    private String executePost(String tenantId, String url, String body) {
-        String token = tokenStore.getValidToken(tenantId);
+    private String executePost(String tenantId, String url, boolean skipTokenAuth, String body) {
+        String token = skipTokenAuth ? null : tokenStore.getValidToken(tenantId);
 
         try {
-            return nphiesWebClient.post()
-                    .uri(url)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+            var request = nphiesWebClient.post()
+                    .uri(url);
+            if (token != null) {
+                request = request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+            }
+            return request
                     .header(HttpHeaders.CONTENT_TYPE, "application/fhir+json")
                     .header(HttpHeaders.ACCEPT, "application/fhir+json")
                     .header("X-Tenant-Id", tenantId) // for NPHIES audit / internal tracing
@@ -191,6 +197,8 @@ public class NphiesGatewayClient {
                             ". Request queued for retry when circuit closes.", e);
         } catch (NphiesException.NonRetryable e) {
             throw e; // Propagate as-is — validation/4xx errors not retried
+        } catch (NphiesAuthException e) {
+            throw e; // Auth failures must not be re-wrapped — GlobalExceptionHandler handles them
         } catch (Exception e) {
             throw new NphiesException("NPHIES call failed for tenant: " + tenantId, e);
         }

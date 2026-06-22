@@ -61,6 +61,22 @@ public class TenantNphiesConfig {
     @Column(name = "api_base_url", nullable = false)
     private String apiBaseUrl;
 
+    /**
+     * Optional full Bundle submit URL override.
+     * When set, used directly for POST instead of apiBaseUrl + "/Bundle".
+     * Useful for test servers that expose a $process-message endpoint.
+     */
+    @Column(name = "bundle_submit_url")
+    private String bundleSubmitUrl;
+
+    /**
+     * When true, skips OAuth2 token fetch and sends FHIR requests without
+     * a Bearer token. Use for IP-whitelisted test environments only.
+     */
+    @Column(name = "skip_token_auth", nullable = false)
+    @Builder.Default
+    private boolean skipTokenAuth = false;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)

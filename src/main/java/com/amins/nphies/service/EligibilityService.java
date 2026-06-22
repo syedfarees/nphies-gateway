@@ -78,7 +78,7 @@ public class EligibilityService {
                 .build();
 
         String bundleJson   = bundleBuilder.build(fhirInput);
-        String responseJson = gatewayClient.submitBundle(tenantId, config.getApiBaseUrl(), bundleJson);
+        String responseJson = gatewayClient.submitBundle(tenantId, config.getApiBaseUrl(), config.getBundleSubmitUrl(), config.isSkipTokenAuth(), bundleJson);
 
         return responseMapper.map(request.getRequestId(), responseJson);
     }
