@@ -191,6 +191,8 @@ public class NphiesGatewayClient {
                             ". Request queued for retry when circuit closes.", e);
         } catch (NphiesException.NonRetryable e) {
             throw e; // Propagate as-is — validation/4xx errors not retried
+        } catch (NphiesAuthException e) {
+            throw e; // Auth failures must not be re-wrapped — GlobalExceptionHandler handles them
         } catch (Exception e) {
             throw new NphiesException("NPHIES call failed for tenant: " + tenantId, e);
         }
