@@ -85,7 +85,7 @@ class NphiesGatewayClientTest {
                 .setBody("{\"resourceType\":\"Bundle\"}"));
 
         String result = gatewayClient.submitBundle(
-                TENANT, mockWebServer.url("/r4").toString(), "{\"resourceType\":\"Bundle\"}");
+                TENANT, mockWebServer.url("/r4").toString(), null, false, "{\"resourceType\":\"Bundle\"}");
 
         assertThat(result).isEqualTo("{\"resourceType\":\"Bundle\"}");
     }
@@ -94,7 +94,7 @@ class NphiesGatewayClientTest {
     void submitBundle_sendsAuthorizationHeader() throws Exception {
         mockWebServer.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
 
-        gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), "{}");
+        gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), null, false, "{}");
 
         var request = mockWebServer.takeRequest();
         assertThat(request.getHeader("Authorization")).isEqualTo("Bearer test-bearer-token");
@@ -104,7 +104,7 @@ class NphiesGatewayClientTest {
     void submitBundle_sendsFhirContentTypeHeader() throws Exception {
         mockWebServer.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
 
-        gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), "{}");
+        gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), null, false, "{}");
 
         var request = mockWebServer.takeRequest();
         assertThat(request.getHeader("Content-Type")).contains("application/fhir+json");
@@ -115,7 +115,7 @@ class NphiesGatewayClientTest {
         mockWebServer.enqueue(new MockResponse().setResponseCode(401));
 
         assertThatThrownBy(() ->
-                gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), "{}"))
+                gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), null, false, "{}"))
                 .isInstanceOf(Exception.class);
 
         verify(tokenStore).invalidateToken(TENANT);
@@ -128,7 +128,7 @@ class NphiesGatewayClientTest {
                 .setBody("Validation failed"));
 
         assertThatThrownBy(() ->
-                gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), "{}"))
+                gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), null, false, "{}"))
                 .isInstanceOf(NphiesException.NonRetryable.class);
     }
 
@@ -137,7 +137,7 @@ class NphiesGatewayClientTest {
         mockWebServer.enqueue(new MockResponse().setResponseCode(500));
 
         assertThatThrownBy(() ->
-                gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), "{}"))
+                gatewayClient.submitBundle(TENANT, mockWebServer.url("/r4").toString(), null, false, "{}"))
                 .isInstanceOf(NphiesException.class);
     }
 

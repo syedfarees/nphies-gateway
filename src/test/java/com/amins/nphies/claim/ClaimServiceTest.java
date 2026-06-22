@@ -82,7 +82,7 @@ class ClaimServiceTest {
         stubInsurer();
         stubClaimSave();
         when(claimBundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         ClaimResponseDto responseDto = ClaimResponseDto.builder()
                 .bundleId("resp-bundle-1")
                 .outcome("complete")
@@ -106,7 +106,7 @@ class ClaimServiceTest {
         stubInsurer();
         stubClaimSave();
         when(claimBundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         ClaimResponseDto responseDto = ClaimResponseDto.builder()
                 .bundleId("resp-bundle-1")
                 .outcome("complete")
@@ -132,7 +132,7 @@ class ClaimServiceTest {
         stubInsurer();
         stubClaimSave();
         when(claimBundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any()))
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any()))
                 .thenThrow(new NphiesException.Retryable("gateway down"));
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -149,7 +149,7 @@ class ClaimServiceTest {
         stubInsurer();
         stubClaimSave();
         when(claimBundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any()))
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any()))
                 .thenThrow(new RuntimeException("timeout"));
         when(claimResponseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 

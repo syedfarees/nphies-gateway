@@ -58,7 +58,7 @@ class EligibilityServiceTest {
     void checkEligibility_happyPath_returnsResponse() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         EligibilityResponse expected = completeResponse();
         when(responseMapper.map(any(), any())).thenReturn(expected);
 
@@ -71,7 +71,7 @@ class EligibilityServiceTest {
     void checkEligibility_happyPath_returnsExpectedOutcome() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(EligibilityResponse.builder()
                 .requestId("req-1")
                 .outcome(EligibilityResponse.EligibilityOutcome.COMPLETE)
@@ -110,7 +110,7 @@ class EligibilityServiceTest {
     void checkEligibility_providerLicenseFromConfig() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         ArgumentCaptor<EligibilityRequestInput> captor =
@@ -125,7 +125,7 @@ class EligibilityServiceTest {
     void checkEligibility_providerNameIsTenantId() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         ArgumentCaptor<EligibilityRequestInput> captor =
@@ -142,7 +142,7 @@ class EligibilityServiceTest {
     void checkEligibility_payerFieldsPassedThrough() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         EligibilityCheckRequest req = minimalRequest()
@@ -163,7 +163,7 @@ class EligibilityServiceTest {
     void checkEligibility_patientFieldsPassedThrough() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         EligibilityCheckRequest req = minimalRequest()
@@ -190,19 +190,19 @@ class EligibilityServiceTest {
     void checkEligibility_calledWithApiBaseUrl() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         eligibilityService.checkEligibility(minimalRequest().build());
 
-        verify(gatewayClient).submitBundle(eq(TENANT_ID), eq(API_BASE_URL), any());
+        verify(gatewayClient).submitBundle(eq(TENANT_ID), eq(API_BASE_URL), any(), anyBoolean(), any());
     }
 
     @Test
     void checkEligibility_responsePassedToMapper() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         eligibilityService.checkEligibility(minimalRequest().build());
@@ -214,7 +214,7 @@ class EligibilityServiceTest {
     void checkEligibility_requestIdPassedToMapper() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn(RESPONSE_JSON);
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn(RESPONSE_JSON);
         when(responseMapper.map(any(), any())).thenReturn(completeResponse());
 
         eligibilityService.checkEligibility(minimalRequest().requestId("specific-req-id").build());
@@ -228,7 +228,7 @@ class EligibilityServiceTest {
     void checkEligibility_nonRetryableException_propagates() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any()))
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any()))
                 .thenThrow(new NphiesException.NonRetryable("bad request"));
 
         assertThatThrownBy(() ->
@@ -240,7 +240,7 @@ class EligibilityServiceTest {
     void checkEligibility_retryableException_propagates() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any()))
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any()))
                 .thenThrow(new NphiesException.Retryable("server error"));
 
         assertThatThrownBy(() ->
@@ -264,7 +264,7 @@ class EligibilityServiceTest {
     void checkEligibility_mapperReturnsPending_serviceReturnsPending() {
         stubConfig();
         when(bundleBuilder.build(any())).thenReturn(BUNDLE_JSON);
-        when(gatewayClient.submitBundle(any(), any(), any())).thenReturn("");
+        when(gatewayClient.submitBundle(any(), any(), any(), anyBoolean(), any())).thenReturn("");
         when(responseMapper.map(any(), any())).thenReturn(EligibilityResponse.builder()
                 .requestId("req-1")
                 .outcome(EligibilityResponse.EligibilityOutcome.PENDING)
