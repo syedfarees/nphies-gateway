@@ -62,6 +62,10 @@ public class TenantRegistrationService {
             admin.setPasswordHash(passwordEncoder.encode(req.adminPassword()));
             admin.setRole("ADMIN");
             userRepository.save(admin);
+        } catch (Exception ex) {
+            // Deregister so the caller can retry — schema + Flyway migrations stay and are idempotent.
+            provisioner.deregister(tenantId);
+            throw ex;
         } finally {
             TenantContext.clear();
         }

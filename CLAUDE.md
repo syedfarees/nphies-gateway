@@ -61,10 +61,12 @@ The backend acts as a gateway between internal tenants (hospitals/providers) and
 
 ### Multi-Tenancy Pattern
 
-- **Tenant ID is resolved server-side**: `JwtAuthFilter` authenticates the user, reads `tenant_id` from the user's DB row, and populates `TenantContext` (ThreadLocal), clearing it in a `finally` block after the request.
-- Controllers obtain the tenant via `TenantContext.require()` (403 if the user has no tenant assigned). **Never** accept a tenant ID from a client-supplied header or request body — the old `X-Tenant-Id` header is ignored.
+- **Per-schema isolation**: each tenant lives in its own MySQL schema (`nphies_{tenantId}`). There are no `tenant_id` columns in domain tables. `TenantSchemaResolver` maps the active `TenantContext` to a schema name; `SchemaTenantConnectionProvider` runs `USE schema` on every Hibernate connection checkout.
+- **Authenticated requests**: `JwtAuthFilter` reads the `tid` claim from the JWT (embedded at login from the validated tenant) and sets `TenantContext`, clearing it in a `finally` block. Controllers call `TenantContext.require()` as an explicit guard.
+- **Pre-auth endpoints** (login, register, send-otp, forgot-password, reset-password): the client supplies a `tenantId` in the request body. `AuthController` validates this against `TenantSchemaProvisioner.exists()` before setting `TenantContext` — requests for non-existent tenants are rejected before any DB access.
 - Each tenant gets isolated: Caffeine token cache slot, Resilience4j circuit breaker/retry/rate-limiter instance, and encrypted credential row.
 - `NphiesTokenStore` uses `ReentrantLock` per tenant to prevent thundering herd on token refresh.
+- **Do not** accept tenant ID from client in any context other than pre-auth flows — all post-auth routing uses the JWT `tid` claim exclusively.
 
 ### Two Auth Systems
 
@@ -100,7 +102,7 @@ Master encryption key is read from env var `NPHIES_MASTER_KEY_BASE64`. Generate 
 ### Database
 
 - **MySQL 8.0.19+** with **Flyway** migrations (`src/main/resources/db/migration/`, requires the `flyway-mysql` module)
-- `ddl-auto: validate` — Flyway owns the schema, Hibernate only validates
+- `ddl-auto: none` — with Hibernate SCHEMA multi-tenancy there is no single default schema at startup (`nphies_system` only has `tenant_registry`, not domain tables), so `validate` would fail. Flyway owns all schemas; Hibernate never touches DDL.
 - Timestamps are `DATETIME(6)` stored in UTC (`connectionTimeZone=UTC` on the JDBC URL + `hibernate.jdbc.time_zone: UTC`); `updated_at` columns use `ON UPDATE CURRENT_TIMESTAMP(6)` instead of triggers
 - List-valued columns (`claim_items.care_team_sequences`, `diagnosis_sequences`, `modifier_codes`) are `JSON` columns mapped with `@JdbcTypeCode(SqlTypes.JSON)` (MySQL has no array type)
 - Tables: `tenant_nphies_config`, `users`, `beneficiaries`, `practitioners`, `organizations`, `coverages`, `encounters`, `claims` (+ care team/diagnoses/items/responses)

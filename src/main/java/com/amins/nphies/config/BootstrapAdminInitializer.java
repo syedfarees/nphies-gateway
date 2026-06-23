@@ -80,7 +80,9 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                 log.warn("Bootstrap: created placeholder NPHIES config for tenant '{}' — replace credentials before submitting to NPHIES", tenantId);
             }
 
-            if (!userRepository.existsByEmailIgnoreCase(adminEmail)) {
+            // Guard by role rather than email so a changed BOOTSTRAP_ADMIN_EMAIL doesn't
+            // silently create a second admin alongside the original one.
+            if (!userRepository.existsByRole("ADMIN")) {
                 User admin = new User();
                 admin.setName("Bootstrap Admin");
                 admin.setEmail(adminEmail.toLowerCase());

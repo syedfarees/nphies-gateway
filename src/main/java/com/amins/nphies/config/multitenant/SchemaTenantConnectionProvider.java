@@ -14,17 +14,30 @@ import java.sql.SQLException;
  * Switches MySQL schema per Hibernate transaction by executing USE `schema_name`.
  * The single underlying DataSource (HikariCP) connects to the MySQL server without
  * a default database — the schema is always set explicitly on connection checkout.
+ *
+ * getAnyConnection() resets to the system schema so pooled connections left over
+ * from a previous tenant's USE statement don't silently serve the wrong schema.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class SchemaTenantConnectionProvider implements MultiTenantConnectionProvider<String> {
 
+    // Must match TenantSchemaResolver.SYSTEM_SCHEMA — kept local to avoid circular dependency.
+    private static final String SYSTEM_SCHEMA = "nphies_system";
+
     private final DataSource dataSource;
 
     @Override
     public Connection getAnyConnection() throws SQLException {
-        return dataSource.getConnection();
+        Connection conn = dataSource.getConnection();
+        try (var st = conn.createStatement()) {
+            st.execute("USE `" + SYSTEM_SCHEMA + "`");
+        } catch (SQLException ex) {
+            conn.close();
+            throw ex;
+        }
+        return conn;
     }
 
     @Override
@@ -35,8 +48,8 @@ public class SchemaTenantConnectionProvider implements MultiTenantConnectionProv
     @Override
     public Connection getConnection(String schema) throws SQLException {
         Connection conn = dataSource.getConnection();
-        try {
-            conn.createStatement().execute("USE `" + sanitize(schema) + "`");
+        try (var st = conn.createStatement()) {
+            st.execute("USE `" + sanitize(schema) + "`");
         } catch (SQLException ex) {
             log.error("Failed to switch to schema '{}': {}", schema, ex.getMessage());
             conn.close();

@@ -82,13 +82,28 @@ public class TenantSchemaProvisioner {
         return count == null || count == 0;
     }
 
+    /**
+     * Removes the tenant from the system registry so a failed provision() can be retried.
+     * The schema and Flyway migrations remain on disk — they are idempotent on the next run.
+     */
+    public void deregister(String tenantId) {
+        systemJdbcTemplate.update(
+                "DELETE FROM nphies_system.tenant_registry WHERE tenant_id = ?", tenantId);
+        log.warn("Tenant '{}' deregistered from system registry after partial-provision failure", tenantId);
+    }
+
     public static String schemaName(String tenantId) {
         return "nphies_" + tenantId;
     }
 
-    /** Builds a JDBC URL for a specific schema, reusing the base URL. */
+    /**
+     * Builds a JDBC URL for a specific schema, preserving all query parameters from the
+     * configured datasource URL (SSL settings, timezone, etc.).
+     */
     private String buildUrl(String schema) {
         String base = jdbcUrl.replaceAll("(jdbc:[^:]+://[^/]+/).*", "$1");
-        return base + schema + "?connectionTimeZone=UTC";
+        int q = jdbcUrl.indexOf('?');
+        String queryString = q >= 0 ? jdbcUrl.substring(q) : "";
+        return base + schema + queryString;
     }
 }

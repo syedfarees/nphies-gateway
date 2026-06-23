@@ -1,5 +1,6 @@
 package com.amins.nphies.user;
 
+import com.amins.nphies.config.multitenant.TenantSchemaProvisioner;
 import com.amins.nphies.model.TenantContext;
 import com.amins.nphies.user.dto.*;
 import jakarta.validation.Valid;
@@ -21,9 +22,13 @@ public class AuthController {
     private final JwtService jwtService;
     private final InvitationService invitationService;
     private final PasswordResetService passwordResetService;
+    private final TenantSchemaProvisioner tenantSchemaProvisioner;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
+        if (!tenantSchemaProvisioner.exists(req.getTenantId())) {
+            return ResponseEntity.status(401).body("{\"message\":\"Invalid credentials\"}");
+        }
         TenantContext.set(req.getTenantId());
         try {
             authenticationManager.authenticate(
@@ -42,6 +47,9 @@ public class AuthController {
      */
     @PostMapping("/register/send-otp")
     public ResponseEntity<RegisterResponse> sendRegistrationOtp(@Valid @RequestBody SendOtpRequest req) {
+        if (!tenantSchemaProvisioner.exists(req.getTenantId())) {
+            return ResponseEntity.ok(new RegisterResponse(true)); // silent no-op for unknown tenants
+        }
         TenantContext.set(req.getTenantId());
         invitationService.resendOtp(req.getEmail());
         return ResponseEntity.ok(new RegisterResponse(true));
@@ -49,6 +57,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
+        if (!tenantSchemaProvisioner.exists(req.getTenantId())) {
+            return ResponseEntity.badRequest().body("{\"message\":\"Invalid or unknown tenant\"}");
+        }
         TenantContext.set(req.getTenantId());
         try {
             userService.register(req);
@@ -72,6 +83,9 @@ public class AuthController {
     /** Always returns success — never reveals whether the email has an account. */
     @PostMapping("/forgot-password")
     public ResponseEntity<RegisterResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        if (!tenantSchemaProvisioner.exists(req.getTenantId())) {
+            return ResponseEntity.ok(new RegisterResponse(true)); // silent no-op for unknown tenants
+        }
         TenantContext.set(req.getTenantId());
         passwordResetService.requestReset(req.getEmail());
         return ResponseEntity.ok(new RegisterResponse(true));
@@ -79,6 +93,9 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        if (!tenantSchemaProvisioner.exists(req.getTenantId())) {
+            return ResponseEntity.badRequest().body("{\"message\":\"Invalid or unknown tenant\"}");
+        }
         TenantContext.set(req.getTenantId());
         try {
             passwordResetService.resetPassword(req);

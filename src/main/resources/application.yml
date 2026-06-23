@@ -13,7 +13,10 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none             # Flyway manages all schemas — never auto
+      # none (not validate) because SCHEMA multi-tenancy means there is no single
+      # "current schema" at startup — TenantSchemaResolver falls back to nphies_system
+      # which only has tenant_registry, not domain tables. Flyway owns all schemas.
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
