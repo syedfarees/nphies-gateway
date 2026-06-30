@@ -57,8 +57,6 @@ npm install
 npm run dev                   # http://localhost:5173
 ```
 
-Default bootstrap admin: `admin@tracare.local` / `Admin@12345` — change on first login.
-
 ## Domain context
 
 NPHIES (National Platform for Health Information Exchange for Saudi) is the Saudi Ministry of Health's FHIR R4 clearinghouse. Every insurance claim from a Saudi healthcare provider must be submitted through it. This service is the integration layer: it handles per-payer credential lifecycle, FHIR bundle assembly, submission (`POST /r4/Bundle`), and response polling — so hospital applications talk to a single internal REST API instead of implementing any of that themselves.
